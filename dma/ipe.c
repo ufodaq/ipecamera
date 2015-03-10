@@ -406,7 +406,7 @@ int dma_ipe_stream_read(pcilib_dma_context_t *vctx, pcilib_dma_engine_t dma, uin
 	while (((*last_written_addr_ptr == 0)||(ctx->last_read_addr == (*last_written_addr_ptr)))&&((wait == PCILIB_TIMEOUT_INFINITE)||(((cur.tv_sec - start.tv_sec)*1000000 + (cur.tv_usec - start.tv_usec)) < wait))) {
 	    usleep(10);
 #ifdef IPEDMA_SUPPORT_EMPTY_DETECTED
-	    if (*empty_detected_ptr) break;
+	    if ((ret != PCILIB_STREAMING_REQ_PACKET)&&(*empty_detected_ptr)) break;
 #endif /* IPEDMA_SUPPORT_EMPTY_DETECTED */
 	    gettimeofday(&cur, NULL);
 	}

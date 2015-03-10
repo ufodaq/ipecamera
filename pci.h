@@ -60,7 +60,7 @@ struct pcilib_s {
 pcilib_model_description_t pcilib_model[4] = {
     { 4, PCILIB_HOST_ENDIAN, 	NULL, NULL, NULL, NULL, NULL, NULL },
     { 4, PCILIB_HOST_ENDIAN, 	NULL, NULL, NULL, NULL, NULL, NULL },
-    { 4, PCILIB_LITTLE_ENDIAN,	ipecamera_registers, ipecamera_register_banks, ipecamera_register_ranges, ipecamera_events, ipecamera_data_types, &nwl_dma_api, &ipecamera_image_api },
+    { 4, PCILIB_LITTLE_ENDIAN,	ipecamera_registers, ipecamera_register_banks, ipecamera_register_ranges, ipecamera_events, ipecamera_data_types, &ipe_dma_api, &ipecamera_image_api },
     { 4, PCILIB_LITTLE_ENDIAN,	kapture_registers, kapture_register_banks, kapture_register_ranges, kapture_events, kapture_data_types, &ipe_dma_api, &kapture_api },
 };
 

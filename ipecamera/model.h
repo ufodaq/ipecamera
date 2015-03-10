@@ -9,7 +9,7 @@
 //#define IPECAMERA_DEBUG
 
 #define IPECAMERA_DMA_R3
-#define IPECAMERA_DMA_ADDRESS 1
+#define IPECAMERA_DMA_ADDRESS 0
 #define IPECAMERA_DMA_PACKET_LENGTH 4096
 
 //#define IPECAMERA_REGISTER_SPACE 0xfeaffc00
@@ -21,7 +21,8 @@
 pcilib_register_bank_description_t ipecamera_register_banks[] = {
     { PCILIB_REGISTER_BANK0,    PCILIB_BAR0,    128, IPECAMERA_REGISTER_PROTOCOL, IPECAMERA_REGISTER_READ , IPECAMERA_REGISTER_WRITE, PCILIB_LITTLE_ENDIAN, 8 , PCILIB_LITTLE_ENDIAN, "%lu"  , "cmosis", "CMOSIS CMV2000 Registers" },
     { PCILIB_REGISTER_BANK1,    PCILIB_BAR0, 0x0200, PCILIB_DEFAULT_PROTOCOL    , IPECAMERA_REGISTER_SPACE, IPECAMERA_REGISTER_SPACE, PCILIB_LITTLE_ENDIAN, 32, PCILIB_LITTLE_ENDIAN, "0x%lx", "fpga", "IPECamera Registers" },
-    { PCILIB_REGISTER_BANK_DMA, PCILIB_BAR0, 0xA000, PCILIB_DEFAULT_PROTOCOL    , 0,                        0,                        PCILIB_LITTLE_ENDIAN, 32, PCILIB_LITTLE_ENDIAN, "0x%lx", "dma", "DMA Registers"},
+//    { PCILIB_REGISTER_BANK_DMA, PCILIB_BAR0, 0xA000, PCILIB_DEFAULT_PROTOCOL    , 0,                        0,                        PCILIB_LITTLE_ENDIAN, 32, PCILIB_LITTLE_ENDIAN, "0x%lx", "dma", "DMA Registers"},
+    { PCILIB_REGISTER_BANK_DMA, PCILIB_BAR0, 0x0200, PCILIB_DEFAULT_PROTOCOL    , 0,                        0,                    PCILIB_LITTLE_ENDIAN, 32, PCILIB_LITTLE_ENDIAN, "0x%lx", "dma", "DMA Registers"},
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL }
 };
 
@@ -125,8 +126,8 @@ pcilib_register_description_t ipecamera_registers[] = {
 };
 
 pcilib_register_range_t ipecamera_register_ranges[] = {
-    {0, 	128, 	PCILIB_REGISTER_BANK0, 0},
-    {0x9000,	0x9FFF,	PCILIB_REGISTER_BANK1, -0x9000},
+//    {0xF000, 	0xF000 + 128, 	PCILIB_REGISTER_BANK0, 0},
+//    {0x9000,	0x9FFF,	PCILIB_REGISTER_BANK1, -0x9000},
     {0, 0, 0, 0}
 };
 

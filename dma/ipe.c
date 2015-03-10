@@ -206,7 +206,7 @@ int dma_ipe_start(pcilib_dma_context_t *vctx, pcilib_dma_engine_t dma, pcilib_dm
 	}
 	
 	    // Enable DMA
-//	WR(IPEDMA_REG_CONTROL, 0x1);
+	WR(IPEDMA_REG_CONTROL, 0x1);
 	
 	ctx->last_read = IPEDMA_DMA_PAGES - 1;
 

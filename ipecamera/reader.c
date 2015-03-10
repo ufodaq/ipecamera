@@ -24,7 +24,7 @@
 
 int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
     const size_t header_size = 8 * sizeof(ipecamera_payload_t);
-    const size_t footer_size = 8 * sizeof(ipecamera_payload_t);
+    const size_t footer_size = 16 * sizeof(ipecamera_payload_t);
 
     size_t line_size, raw_size, padded_blocks;
 
@@ -51,6 +51,7 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
 #endif /* IPECAMERA_BUG_EXTRA_DATA */
 
     ctx->cur_padded_size = padded_blocks * IPECAMERA_DMA_PACKET_LENGTH;
+//    printf("%lu %lu %lu\n", ctx->cur_raw_size, ctx->cur_full_size, ctx->cur_padded_size);
 
     return 0;
 }
@@ -129,7 +130,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 #endif /* IPECAMERA_DEBUG_RAW_PACKETS */
 	    
 	    if (invalid_frame_id != ctx->event_id) {
-		pcilib_warning("No frame magic in DMA packet of %u bytes, current event %lu", bufsize, ctx->event_id);
+//		pcilib_warning("No frame magic in DMA packet of %u bytes, current event %lu (got %lu)", bufsize, ctx->event_id, invalid_frame_id);
 		invalid_frame_id = ctx->event_id;
 	    }
 
@@ -211,7 +212,9 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     ctx->cur_size += bufsize;
 //    printf("%i: %i %i\n", ctx->buffer_pos, ctx->cur_size, bufsize);
 
-    if (ctx->cur_size >= ctx->full_size) eof = 1;
+    if (ctx->cur_size >= ctx->full_size) {
+	eof = 1;
+    }
 
     if (ctx->event.params.rawdata.callback) {
 	res = ctx->event.params.rawdata.callback(ctx->event_id, (pcilib_event_info_t*)(ctx->frame + ctx->buffer_pos), (eof?PCILIB_EVENT_FLAG_EOF:PCILIB_EVENT_FLAGS_DEFAULT), bufsize, buf, ctx->event.params.rawdata.user);
@@ -241,14 +244,14 @@ void *ipecamera_reader_thread(void *user) {
     ipecamera_t *ctx = (ipecamera_t*)user;
     
     while (ctx->run_reader) {
-	err = pcilib_stream_dma(ctx->event.pcilib, ctx->rdma, 0, 0, PCILIB_DMA_FLAG_MULTIPACKET, PCILIB_DMA_TIMEOUT, &ipecamera_data_callback, user);
+	err = pcilib_stream_dma(ctx->event.pcilib, ctx->rdma, 0, 0, PCILIB_DMA_FLAG_MULTIPACKET, 10 * PCILIB_DMA_TIMEOUT, &ipecamera_data_callback, user);
 	if (err) {
 	    if (err == PCILIB_ERROR_TIMEOUT) {
 		if (ctx->cur_size >= ctx->cur_raw_size) ipecamera_new_frame(ctx);
 #ifdef IPECAMERA_BUG_INCOMPLETE_PACKETS
 		else if (ctx->cur_size > 0) ipecamera_new_frame(ctx);
 #endif /* IPECAMERA_BUG_INCOMPLETE_PACKETS */
-		if (pcilib_check_deadline(&ctx->autostop.timestamp, PCILIB_DMA_TIMEOUT)) {
+		if (pcilib_check_deadline(&ctx->autostop.timestamp, 10 * PCILIB_DMA_TIMEOUT)) {
 		    ctx->run_reader = 0;
 		    break;
 		}
@@ -261,8 +264,8 @@ void *ipecamera_reader_thread(void *user) {
     
     ctx->run_streamer = 0;
     
-    if (ctx->cur_size)
-	pcilib_error("partialy read frame after stop signal, %zu bytes in the buffer", ctx->cur_size);
+//    if (ctx->cur_size)
+//	pcilib_error("partialy read frame after stop signal, %zu bytes in the buffer", ctx->cur_size);
 
     return NULL;
 }

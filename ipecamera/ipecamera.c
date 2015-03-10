@@ -653,11 +653,12 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
     }
 
     pcilib_sleep_until_deadline(&ctx->next_trigger);
-
+/*
     GET_REG(num_frames_reg, value);
     if (value == ctx->max_frames) {
 	return PCILIB_ERROR_BUSY;
     }
+*/
 /*
     do {
 	usleep(10);

@@ -1237,7 +1237,8 @@ int GrabCallback(pcilib_event_id_t event_id, pcilib_event_info_t *info, void *us
     ctx->event_pending = 0;
     ctx->event_count++;
     
-    ctx->missing_count += (info->seqnum - ctx->last_num) - 1;
+    if (ctx->last_num)
+	ctx->missing_count += (info->seqnum - ctx->last_num) - 1;
     ctx->last_num = info->seqnum;
     
     if (info->flags&PCILIB_EVENT_INFO_FLAG_BROKEN) {

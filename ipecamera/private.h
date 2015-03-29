@@ -4,9 +4,10 @@
 #include "ipecamera.h"
 
 #define IPECAMERA_BUG_EXTRA_DATA
-#define IPECAMERA_BUG_MULTIFRAME_PACKETS
+#define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< this is by design, start of packet comes directly after the end of last one in streaming mode */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS
 #define IPECAMERA_BUG_POSTPONED_READ
+#define IPECAMERA_DEBUG_BROKEN_FRAMES		"/mnt/frames"
 //#define IPECAMERA_DEBUG_RAW_PACKETS		"/mnt/frames"
 
 //#define IPECAMERA_ANNOUNCE_READY		//**< announce new event only after the reconstruction is done */
@@ -16,6 +17,9 @@
 #define IPECAMERA_SLEEP_TIME 250000 		//**< Michele thinks 250 should be enough, but reset failing in this case */
 #define IPECAMERA_NEXT_FRAME_DELAY 1000 	//**< Michele requires 30000 to sync between End Of Readout and next Frame Req */
 #define IPECAMERA_WAIT_FRAME_RCVD_TIME 0 	//**< by Uros ,wait 6 ms */
+#define IPECAMERA_TRIGGER_WAIT_IDLE 200000	//**< In trigger call allow specified timeout for camera to get out of busy state. Set 0 to fail immideatly */
+#define IPECAMERA_READ_STATUS_DELAY 1000	//**< According to Uros, 1ms delay needed before consequitive reads from status registers */
+
 #define IPECAMERA_NOFRAME_SLEEP 100
 #define IPECAMERA_NOFRAME_PREPROC_SLEEP 100
 
@@ -83,7 +87,7 @@ struct ipecamera_s {
 
     pcilib_register_t packet_len_reg;
     pcilib_register_t control_reg, status_reg;
-    pcilib_register_t status3_reg;
+    pcilib_register_t status2_reg, status3_reg;
     pcilib_register_t n_lines_reg;
     uint16_t line_reg;
     pcilib_register_t exposure_reg;

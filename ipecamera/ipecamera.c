@@ -97,6 +97,7 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	FIND_REG(status_reg, "fpga", "status");
 	FIND_REG(control_reg, "fpga", "control");
 
+	FIND_REG(status2_reg, "fpga", "status2");
 	FIND_REG(status3_reg, "fpga", "status3");
 
 	FIND_REG(n_lines_reg, "cmosis", "cmosis_number_lines");
@@ -304,8 +305,9 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     if (value&0x1000) ctx->fr_mode = 1;
     else {
 	ctx->fr_mode = 0;
-	CHECK_STATUS_REG();
-	if (err) return err;
+	
+//	CHECK_STATUS_REG();
+//	if (err) return err;
     }
 
     ctx->event_id = 0;
@@ -659,12 +661,28 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 	return PCILIB_ERROR_BUSY;
     }
 */
-/*
-    do {
-	usleep(10);
-	GET_REG(status3_reg, value);
-    } while (value&0x20000000);
-*/
+
+    GET_REG(status2_reg, value);
+    if (value&0x40000000) {
+//	printf("%x\n", value);
+//	GET_REG(status3_reg, value);
+//	printf("3: %x\n", value);
+//	GET_REG(status_reg, value);
+//	printf("1: %x\n", value);
+
+#ifdef IPECAMERA_TRIGGER_WAIT_IDLE
+	if (IPECAMERA_TRIGGER_WAIT_IDLE) {
+	    struct timeval deadline;
+	    pcilib_calc_deadline(&deadline, IPECAMERA_TRIGGER_WAIT_IDLE);
+	    do {
+		usleep(IPECAMERA_READ_STATUS_DELAY);
+		GET_REG(status2_reg, value);
+	    } while ((value&0x40000000)&&(pcilib_calc_time_to_deadline(&deadline) > 0));
+	}
+	if (value&0x40000000)
+#endif /* IPECAMERA_TRIGGER_WAIT_IDLE */
+	    return PCILIB_ERROR_BUSY;
+    }
 
     GET_REG(control_reg, value); 
     SET_REG(control_reg, value|IPECAMERA_FRAME_REQUEST);
@@ -672,7 +690,7 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
     //CHECK_REG(status_reg, IPECAMERA_EXPECTED_STATUS);
     SET_REG(control_reg, value);
 
-
+	// We need to compute it differently, on top of that add exposure time and the time FPGA takes to read frame from CMOSIS
     pcilib_calc_deadline(&ctx->next_trigger, IPECAMERA_NEXT_FRAME_DELAY);
 
     return 0;

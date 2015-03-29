@@ -119,7 +119,7 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
 #endif /* IPECAMERA_ANNOUNCE_READY */
 		usleep(IPECAMERA_NOFRAME_SLEEP);
 		}
-	    } else {	    
+	    } else {
 		pcilib_calc_deadline(&tv, timeout);
 
 #ifdef IPECAMERA_ANNOUNCE_READY

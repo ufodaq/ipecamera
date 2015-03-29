@@ -24,10 +24,9 @@
 
 int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
     const size_t header_size = 8 * sizeof(ipecamera_payload_t);
-    const size_t footer_size = 16 * sizeof(ipecamera_payload_t);
+    const size_t footer_size = 8 * sizeof(ipecamera_payload_t);
 
     size_t line_size, raw_size, padded_blocks;
-
 
     switch (ctx->firmware) {
      case 4:
@@ -36,8 +35,9 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
 	break;
      default:
 	line_size = (1 + IPECAMERA_PIXELS_PER_CHANNEL) * 32; 
-	raw_size = header_size + lines * line_size - 32 + footer_size;
+	raw_size = lines * line_size;
 	raw_size *= 16 / ctx->cmosis_outputs;
+	raw_size += header_size  + footer_size;
     }
 
     padded_blocks = raw_size / IPECAMERA_DMA_PACKET_LENGTH + ((raw_size % IPECAMERA_DMA_PACKET_LENGTH)?1:0);
@@ -93,7 +93,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     size_t real_size;
     size_t extra_data = 0;
 #endif /* IPECAMERA_BUG_MULTIFRAME_PACKETS */
-
+    
     ipecamera_t *ctx = (ipecamera_t*)user;
 
 #if defined(IPECAMERA_BUG_INCOMPLETE_PACKETS)||defined(IPECAMERA_BUG_MULTIFRAME_PACKETS)
@@ -185,6 +185,8 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    //bufsize = need;
 	    eof = 1;
 	}
+
+//	printf("%lu %lu %lu - %u\n", ctx->event_id, ctx->cur_size, ctx->cur_raw_size, eof);
 	
 	    // just rip of padding
 	bufsize = ctx->cur_raw_size - ctx->cur_size;

@@ -289,61 +289,72 @@ int dma_ipe_get_status(pcilib_dma_context_t *vctx, pcilib_dma_engine_t dma, pcil
     void *desc_va = (void*)pcilib_kmem_get_ua(ctx->pcilib, ctx->desc);
     uint32_t *last_written_addr_ptr;
     uint32_t last_written_addr;
-    
 
     if (!status) return -1;
 
     if (ctx->mode64) last_written_addr_ptr = desc_va + 3 * sizeof(uint32_t);
     else last_written_addr_ptr = desc_va + 4 * sizeof(uint32_t);
 
-    last_written_addr = ntohl(*last_written_addr_ptr);
+    last_written_addr = *last_written_addr_ptr;
 
     status->started = ctx->started;
     status->ring_size = ctx->ring_size;
     status->buffer_size = ctx->page_size;
 
-    status->ring_tail = ctx->last_read + 1;
-    if (status->ring_tail == status->ring_size) status->ring_tail = 0;
+	// For simplicity, we keep last_read here, and fix in the end
+    status->ring_tail = ctx->last_read;
 
 	// Find where the ring head is actually are
     for (i = 0; i < ctx->ring_size; i++) {
 	uintptr_t bus_addr = pcilib_kmem_get_block_ba(ctx->pcilib, ctx->pages, i);
 
 	if (bus_addr == last_written_addr) {
-	    status->ring_head = bus_addr;
+	    status->ring_head = i;
 	    break;
 	}
     }
-    
+
     if (i == ctx->ring_size) {
-	// ERROR
+	if (last_written_addr) {
+	    pcilib_warning("DMA is in unknown state, last_written_addr does not correspond any of available buffers");
+	    return -1;
+	}
+	status->ring_head = 0;
+	status->ring_tail = 0;
     }
-    
+
     if (n_buffers > ctx->ring_size) n_buffers = ctx->ring_size;
 
-    memset(buffers, 0, n_buffers * sizeof(pcilib_dma_engine_status_t));
+    if (buffers) {
+	memset(buffers, 0, n_buffers * sizeof(pcilib_dma_buffer_status_t));
+	if (status->ring_head >= status->ring_tail) {
+	    for (i = status->ring_tail + 1; (i <= status->ring_head)&&(i < n_buffers); i++) {
+		buffers[i].used = 1;
+		buffers[i].size = ctx->page_size;
+		buffers[i].first = 1;
+		buffers[i].last = 1;
+	    }
+	} else {
+	    for (i = 0; (i <= status->ring_head)&&(i < n_buffers); i++) {
+		buffers[i].used = 1;
+		buffers[i].size = ctx->page_size;
+		buffers[i].first = 1;
+		buffers[i].last = 1;
+	    } 
 
-    if (status->ring_head > status->ring_tail) {
-	for (i = status->ring_tail; i <= status->ring_head; i++) {
-	    buffers[i].used = 1;
-	    buffers[i].size = ctx->page_size;
-	    buffers[i].first = 1;
-	    buffers[i].last = 1;
+	    for (i = status->ring_tail + 1; (i < status->ring_size)&&(i < n_buffers); i++) {
+		buffers[i].used = 1;
+		buffers[i].size = ctx->page_size;
+		buffers[i].first = 1;
+		buffers[i].last = 1;
+	    }
 	}
-    } else {
-	for (i = 0; i <= status->ring_tail; i++) {
-	    buffers[i].used = 1;
-	    buffers[i].size = ctx->page_size;
-	    buffers[i].first = 1;
-	    buffers[i].last = 1;
-	} 
-	
-	for (i = status->ring_head; i < status->ring_size; i++) {
-	    buffers[i].used = 1;
-	    buffers[i].size = ctx->page_size;
-	    buffers[i].first = 1;
-	    buffers[i].last = 1;
-	} 
+    }
+
+	// We actually keep last_read in the ring_tail, so need to increase
+    if (status->ring_tail != status->ring_head) {
+	status->ring_tail++;
+	if (status->ring_tail == status->ring_size) status->ring_tail = 0;
     }
 
     return 0;

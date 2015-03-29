@@ -64,9 +64,11 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
 #ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
 	char name[128];
 	sprintf(name, "%s/broken.%4lu", IPECAMERA_DEBUG_BROKEN_FRAMES, ctx->event_id);
-	FILE *f = fopen("/mnt/frames/broken", "w");
-	fwrite(ctx->buffer + buf_ptr * ctx->padded_size, ctx->raw_size, 1, f);
-	fclose(f);
+	FILE *f = fopen(name, "w");
+	if (f) {
+	    fwrite(ctx->buffer + buf_ptr * ctx->padded_size, ctx->raw_size, 1, f);
+	    fclose(f);
+	}
 #endif /* IPECAMERA_DEBUG_BROKEN_FRAMES */
         err = PCILIB_ERROR_FAILED;
         ctx->frame[buf_ptr].event.image_broken = err;

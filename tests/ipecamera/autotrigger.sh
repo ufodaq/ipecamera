@@ -10,9 +10,9 @@ pci -g -o /dev/null --run-time 12000000 --verbose 10 &
 pid=$!
 
 usleep 100000
-pci -w 9040 80000a01
+pci -w 9040 80004a01
 usleep 10000000
-pci -w 9040 80000001
+pci -w 9040 80000201
 
 echo "Waiting grabber to finish"
 wait $pid

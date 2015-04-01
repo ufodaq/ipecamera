@@ -299,8 +299,6 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     }
 
 	// Allow readout and clean the FRAME_REQUEST mode if set for some reason
-    GET_REG(control_reg, value);
-    SET_REG(control_reg, value|IPECAMERA_READOUT_FLAG);
     usleep(IPECAMERA_SLEEP_TIME);
     if (value&0x1000) ctx->fr_mode = 1;
     else {

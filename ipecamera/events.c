@@ -113,9 +113,9 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
 	if (timeout) {
 	    if (timeout == PCILIB_TIMEOUT_INFINITE) {
 #ifdef IPECAMERA_ANNOUNCE_READY
-		while ((((!ctx->preproc)&&(ctx->reported_id == ctx->event_id))||((ctx->preproc)&&(ctx->reported_id == ctx->preproc_id)))) {
+		while ((ctx->started)&&(((!ctx->preproc)&&(ctx->reported_id == ctx->event_id))||((ctx->preproc)&&(ctx->reported_id == ctx->preproc_id)))) {
 #else /* IPECAMERA_ANNOUNCE_READY */
-		while ((ctx->reported_id == ctx->event_id)) {
+		while ((ctx->started)&&(ctx->reported_id == ctx->event_id)) {
 #endif /* IPECAMERA_ANNOUNCE_READY */
 		usleep(IPECAMERA_NOFRAME_SLEEP);
 		}

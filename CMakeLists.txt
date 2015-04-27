@@ -1,81 +1,40 @@
-project(pcitool)
+project(ipecamera)
 
-set(PCILIB_VERSION "0.1.0")
-set(PCILIB_ABI_VERSION "1")
+set(IPECAMERA_VERSION "0.0.1")
+set(IPECAMERA_ABI_VERSION "0")
 
 cmake_minimum_required(VERSION 2.6)
-
-set(DISABLE_PCITOOL FALSE CACHE BOOL "Build only the library") 
-
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
+pkg_check_modules(UFODECODE ufodecode>=0.3 REQUIRED)
 
-#Check in sibling directory
-pkg_check_modules(UFODECODE ufodecode>=0.2 REQUIRED)
-
-if (NOT DISABLE_PCITOOL)
-    pkg_check_modules(FASTWRITER fastwriter REQUIRED)
-endif (NOT DISABLE_PCITOOL)
-
-set(HEADERS pcilib.h pci.h register.h kmem.h irq.h dma.h event.h default.h tools.h error.h)
-add_definitions("-fPIC --std=c99 -Wall -O2")
-#add_definitions("-fPIC --std=c99 -Wall -O2 -pthread")
-
-add_subdirectory(dma)
-add_subdirectory(ipecamera)
-add_subdirectory(kapture)
-add_subdirectory(pcitool)
-add_subdirectory(apps)
+pkg_check_modules(PCILIB pcitool>=0.2 REQUIRED)
+exec_program("pkg-config --variable=plugindir pcitool" OUTPUT_VARIABLE PCILIB_PLUGIN_DIR)
 
 include_directories(
-    ${FASTWRITER_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}
+    ${UFODECODE_INCLUDE_DIRS}
+    ${PCILIB_INCLUDE_DIRS}
 )
 
 link_directories(
-    ${FASTWRITER_LIBRARY_DIRS}
     ${UFODECODE_LIBRARY_DIRS}
+    ${PCILIB_LIBRARY_DIRS}
 )
 
-add_library(pcilib SHARED pci.c register.c kmem.c irq.c dma.c event.c default.c tools.c error.c) 
-target_link_libraries(pcilib dma ipecamera kapture ${CMAKE_THREAD_LIBS_INIT} ${UFODECODE_LIBRARIES} )
-add_dependencies(pcilib dma ipecamera)
+set(HEADERS ${HEADERS} model.h cmosis.h base.h reader.h events.h data.h private.h ipecamera.h)
 
-set_target_properties(pcilib PROPERTIES
-    VERSION ${PCILIB_VERSION}
-    SOVERSION ${PCILIB_ABI_VERSION}
-#    LINK_FLAGS "-pthread"
-#    LINK_FLAGS "-pthread -Wl,--whole-archive,dma/libdma.a,ipecamera/libipecamera.a,--no-whole-archive"
-)
+add_library(ipecamera SHARED model.c cmosis.c base.c reader.c events.c data.c)
 
-if (NOT DISABLE_PCITOOL)
-    add_executable(pci cli.c)
-    add_dependencies(pci pcitool)
-    target_link_libraries(pci pcilib pcitool ${FASTWRITER_LIBRARIES})
-    set_target_properties(pci PROPERTIES
-	LINK_FLAGS ${CMAKE_THREAD_LIBS_INIT}
-    )
-endif (NOT DISABLE_PCITOOL)
+target_link_libraries(ipecamera ${PCILIB_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 
-#set_target_properties(pci PROPERTIES
-#    LINK_FLAGS "-Wl,pcitool/libpcitool.a"
-#)
-
-if(NOT DEFINED BIN_INSTALL_DIR)
-    set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
-endif(NOT DEFINED BIN_INSTALL_DIR)
-
-
-install(TARGETS pcilib
-    LIBRARY DESTINATION lib${LIB_SUFFIX}
-)
-
-if (NOT DISABLE_PCITOOL)
-    install(TARGETS pci
-	DESTINATION ${BIN_INSTALL_DIR}
-    )
-endif (NOT DISABLE_PCITOOL)
-
-install(FILES pcilib.h
+install(FILES ipecamera.h
     DESTINATION include
 )
+
+install(TARGETS ipecamera
+    DESTINATION ${PCILIB_PLUGIN_DIR}
+)
+

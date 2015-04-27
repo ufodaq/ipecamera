@@ -1,1 +1,0 @@
-KERNEL=="fpga*", NAME="%k", GROUP="users", MODE="0660"

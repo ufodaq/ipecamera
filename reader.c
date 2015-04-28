@@ -38,6 +38,11 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
 	raw_size = lines * line_size;
 	raw_size *= 16 / ctx->cmosis_outputs;
 	raw_size += header_size  + footer_size;
+
+#ifdef IPECAMERA_BUG_MISSING_PAYLOAD
+	    // As I understand, the first 32-byte packet is missing, so we need to substract 32
+	raw_size -= 32;
+#endif /* IPECAMERA_BUG_MISSING_PAYLOAD */
     }
 
     padded_blocks = raw_size / IPECAMERA_DMA_PACKET_LENGTH + ((raw_size % IPECAMERA_DMA_PACKET_LENGTH)?1:0);

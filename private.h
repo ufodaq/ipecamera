@@ -5,9 +5,9 @@
 #include <pcilib/model.h>
 #include "ipecamera.h"
 
-//#define IPECAMERA_BUG_EXTRA_DATA
-#define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< this is by design, start of packet comes directly after the end of last one in streaming mode */
-//#define IPECAMERA_BUG_INCOMPLETE_PACKETS
+#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
+#define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
+//#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 #define IPECAMERA_BUG_POSTPONED_READ
 #define IPECAMERA_DEBUG_BROKEN_FRAMES		"/mnt/frames"
 //#define IPECAMERA_DEBUG_RAW_PACKETS		"/mnt/frames"

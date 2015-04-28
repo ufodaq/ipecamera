@@ -28,7 +28,7 @@ set(HEADERS ${HEADERS} model.h cmosis.h base.h reader.h events.h data.h private.
 
 add_library(ipecamera SHARED model.c cmosis.c base.c reader.c events.c data.c)
 
-target_link_libraries(ipecamera ${PCILIB_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(ipecamera ${PCILIB_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${UFODECODE_LIBRARIES} )
 
 install(FILES ipecamera.h
     DESTINATION include

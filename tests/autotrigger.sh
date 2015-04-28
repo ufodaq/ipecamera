@@ -1,9 +1,16 @@
 #! /bin/bash
 
 function pci {
-    PCILIB_PATH=`which pci`
-    #LD_LIBRARY_PATH="$PCILIB_PATH" 
-    $PCILIB_PATH/pci $*
+    APP_PATH=`dirname $0`/..
+    if [ -d $APP_PATH/../pcitool ]; then
+        PCILIB_BINARY="$APP_PATH/../pcitool/pcitool/pci"
+        PCILIB_PATH="$APP_PATH/../pcitool/pcilib"
+    else
+	PCILIB_BINARY=`which pci`
+	PCILIB_PATH=""
+    fi
+    
+    LD_LIBRARY_PATH="$PCILIB_PATH" PCILIB_PLUGIN_DIR="$APP_PATH" $PCILIB_BINARY $*
 }
 
 echo "Starting the grabber"

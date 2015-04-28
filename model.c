@@ -188,7 +188,7 @@ const pcilib_model_description_t *pcilib_get_event_model(pcilib_t *pcilib, unsig
 	return ipecamera_models;
     }
 
-    if ((vendor_id != 0x10ee)&&((!model)||(strcasecmp(model, "ipecamera"))))
+    if ((vendor_id != 0x10ee)||((model)&&(strcasecmp(model, "ipecamera"))))
 	return NULL;
 
     return &ipecamera_models[0];

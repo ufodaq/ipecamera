@@ -29,10 +29,6 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
     size_t line_size, raw_size, padded_blocks;
 
     switch (ctx->firmware) {
-     case 4:
-	line_size = IPECAMERA_MAX_CHANNELS * (2 + IPECAMERA_PIXELS_PER_CHANNEL / 3) * sizeof(ipecamera_payload_t);
-	raw_size = header_size + lines * line_size + footer_size;
-	break;
      default:
 	line_size = (1 + IPECAMERA_PIXELS_PER_CHANNEL) * 32; 
 	raw_size = lines * line_size;
@@ -47,16 +43,9 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
 
     padded_blocks = raw_size / IPECAMERA_DMA_PACKET_LENGTH + ((raw_size % IPECAMERA_DMA_PACKET_LENGTH)?1:0);
     
-    ctx->cur_raw_size = raw_size;
-    ctx->cur_full_size = padded_blocks * IPECAMERA_DMA_PACKET_LENGTH;
-
-#ifdef IPECAMERA_BUG_EXTRA_DATA
-    ctx->cur_full_size += 8;
-    padded_blocks ++;
-#endif /* IPECAMERA_BUG_EXTRA_DATA */
-
-    ctx->cur_padded_size = padded_blocks * IPECAMERA_DMA_PACKET_LENGTH;
-//    printf("%lu %lu %lu\n", ctx->cur_raw_size, ctx->cur_full_size, ctx->cur_padded_size);
+    ctx->roi_raw_size = raw_size;
+    ctx->roi_padded_size = padded_blocks * IPECAMERA_DMA_PACKET_LENGTH;
+//    printf("%lu %lu\n", ctx->roi_raw_size, ctx->roi_padded_size);
 
     return 0;
 }
@@ -64,7 +53,7 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
 static inline int ipecamera_new_frame(ipecamera_t *ctx) {
     ctx->frame[ctx->buffer_pos].event.raw_size = ctx->cur_size;
 
-    if (ctx->cur_size < ctx->cur_raw_size) {
+    if (ctx->cur_size < ctx->roi_raw_size) {
 	ctx->frame[ctx->buffer_pos].event.info.flags |= PCILIB_EVENT_INFO_FLAG_BROKEN;
     }
     
@@ -175,10 +164,10 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	// for rawdata_callback with complete padding
     real_size = bufsize;
     
-    if (ctx->cur_size + bufsize > ctx->cur_raw_size) {
+    if (ctx->cur_size + bufsize > ctx->roi_raw_size) {
         size_t need;
 	
-	for (need = ctx->cur_raw_size - ctx->cur_size; (need + sizeof(frame_magic)) < bufsize; need += sizeof(uint32_t)) {
+	for (need = ctx->roi_raw_size - ctx->cur_size; (need + sizeof(frame_magic)) < bufsize; need += sizeof(uint32_t)) {
 	    if (!memcmp(buf + need, frame_magic, sizeof(frame_magic))) break;
 	}
 	
@@ -189,7 +178,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	}
 
 	    // just rip of padding
-	bufsize = ctx->cur_raw_size - ctx->cur_size;
+	bufsize = ctx->roi_raw_size - ctx->cur_size;
 
 #ifdef IPECAMERA_DEBUG_RAW_PACKETS
 	sprintf(fname + strlen(fname) - 8, ".partial");
@@ -203,8 +192,8 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 #endif /* IPECAMERA_BUG_MULTIFRAME_PACKETS */
 
     if (ctx->parse_data) {
-	if (ctx->cur_size + bufsize > ctx->full_size) {
-    	    pcilib_error("Unexpected event data, we are expecting at maximum (%zu) bytes, but (%zu) already read", ctx->full_size, ctx->cur_size + bufsize);
+	if (ctx->cur_size + bufsize > ctx->padded_size) {
+    	    pcilib_error("Unexpected event data, we are expecting at maximum (%zu) bytes, but (%zu) already read", ctx->padded_size, ctx->cur_size + bufsize);
 	    return -PCILIB_ERROR_TOOBIG;
 	}
 
@@ -215,7 +204,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     ctx->cur_size += bufsize;
 //    printf("%i: %i %i\n", ctx->buffer_pos, ctx->cur_size, bufsize);
 
-    if (ctx->cur_size >= ctx->cur_raw_size) {
+    if (ctx->cur_size >= ctx->roi_raw_size) {
 	eof = 1;
     }
 
@@ -250,7 +239,7 @@ void *ipecamera_reader_thread(void *user) {
 	err = pcilib_stream_dma(ctx->event.pcilib, ctx->rdma, 0, 0, PCILIB_DMA_FLAG_MULTIPACKET, IPECAMERA_DMA_TIMEOUT, &ipecamera_data_callback, user);
 	if (err) {
 	    if (err == PCILIB_ERROR_TIMEOUT) {
-		if (ctx->cur_size >= ctx->cur_raw_size) ipecamera_new_frame(ctx);
+		if (ctx->cur_size >= ctx->roi_raw_size) ipecamera_new_frame(ctx);
 #ifdef IPECAMERA_BUG_INCOMPLETE_PACKETS
 		else if (ctx->cur_size > 0) ipecamera_new_frame(ctx);
 #endif /* IPECAMERA_BUG_INCOMPLETE_PACKETS */

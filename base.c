@@ -321,9 +321,8 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     
     ipecamera_compute_buffer_size(ctx, ctx->dim.height);
 
-    ctx->raw_size = ctx->cur_raw_size;
-    ctx->full_size = ctx->cur_full_size;
-    ctx->padded_size = ctx->cur_padded_size;
+    ctx->raw_size = ctx->roi_raw_size;
+    ctx->padded_size = ctx->roi_padded_size;
 
     ctx->image_size = ctx->dim.width * ctx->dim.height;
 

@@ -53,13 +53,13 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
 		
     pixels = ctx->image + buf_ptr * ctx->image_size;
     memset(ctx->cmask + ctx->buffer_pos * ctx->dim.height, 0, ctx->dim.height * sizeof(ipecamera_change_mask_t));
-/*
-    printf("decoding %lx...\n", ctx->raw_size);
+
+/*    printf("decoding %lx...\n", ctx->raw_size);
     FILE *f = fopen("/mnt/frame.xxx", "w");
-    fwrite(ctx->buffer + buf_ptr * ctx->padded_size, 1, ctx->raw_size, f);
-    fclose(f);*/
-    res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
-//    puts("done\n");
+    fwrite(ctx->buffer + buf_ptr * ctx->padded_size, 1, ctx->roi_raw_size, f);
+    fclose(f);
+    printf("%lu\n", ctx->raw_size);*/
+    res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->frame[buf_ptr].event.raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
     if (!res) {
 #ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
 	char name[128];

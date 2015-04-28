@@ -5,7 +5,7 @@
 #include <pcilib/model.h>
 #include "ipecamera.h"
 
-#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
+//#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 #define IPECAMERA_BUG_POSTPONED_READ
@@ -120,11 +120,9 @@ struct ipecamera_s {
     size_t buffer_pos;		/**< Current image offset in the buffer, due to synchronization reasons should not be used outside of reader_thread */
     size_t cur_size;		/**< Already written part of data in bytes */
     size_t raw_size;		/**< Expected maximum size of raw data in bytes */
-    size_t full_size;		/**< Expected maximum size of raw data including the padding */
-    size_t padded_size;		/**< Expected maximum size of buffer for raw data, including additional padding due to the ipecamera bugs */
-    size_t cur_raw_size;	/**< Expected size (for currently configured ROI) of raw data in bytes */
-    size_t cur_full_size;	/**< Expected size (for currently configured ROI) of raw data including the padding */
-    size_t cur_padded_size;	/**< Expected size (for currently configured ROI) of buffer for raw data, including additional padding due to the ipecamera bugs */
+    size_t padded_size;		/**< Expected maximum size of buffer for raw data, including additional padding */
+    size_t roi_raw_size;	/**< Expected size (for currently configured ROI) of raw data in bytes */
+    size_t roi_padded_size;	/**< Expected size (for currently configured ROI) of buffer for raw data, including additional padding */
     
     size_t image_size;		/**< Size of a single image in bytes */
     

@@ -13,6 +13,8 @@ pkg_check_modules(UFODECODE ufodecode>=0.3 REQUIRED)
 pkg_check_modules(PCILIB pcitool>=0.2 REQUIRED)
 exec_program("pkg-config --variable=plugindir pcitool" OUTPUT_VARIABLE PCILIB_PLUGIN_DIR)
 
+add_subdirectory(apps)
+
 include_directories(
     ${CMAKE_SOURCE_DIR}
     ${UFODECODE_INCLUDE_DIRS}

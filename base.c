@@ -179,7 +179,7 @@ int ipecamera_set_buffer_size(ipecamera_t *ctx, int size) {
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
     
-    if (((size^(size-1)) < size) < size) {
+    if ((size^(size-1)) < size) {
 	pcilib_error("The buffer size is not power of 2");
     }
     

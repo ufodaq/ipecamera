@@ -3,16 +3,21 @@
 
 #include <pthread.h>
 #include <pcilib/model.h>
+#include <pcilib/debug.h>
 #include "ipecamera.h"
 
 //#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 #define IPECAMERA_BUG_POSTPONED_READ
-#define IPECAMERA_DEBUG_BROKEN_FRAMES		"/mnt/frames"
-//#define IPECAMERA_DEBUG_RAW_PACKETS		"/mnt/frames"
-
 //#define IPECAMERA_ANNOUNCE_READY		//**< announce new event only after the reconstruction is done */
+
+#define IPECAMERA_DEBUG
+
+#ifdef IPECAMERA_DEBUG
+# define IPECAMERA_DEBUG_BROKEN_FRAMES
+# define IPECAMERA_DEBUG_RAW_PACKETS
+#endif /* IPECAMERA_DEBUG */
 
 #define IPECAMERA_REGISTER_TIMEOUT 10000	//**< us */
 #define IPECAMERA_DMA_TIMEOUT 50000		//**< us */
@@ -49,6 +54,29 @@
 #define IPECAMERA_MODE_12_BIT_ADC		2
 #define IPECAMERA_MODE_11_BIT_ADC		1
 #define IPECAMERA_MODE_10_BIT_ADC		0
+
+#ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+#else /* IPECAMERA_DEBUG_BROKEN_FRAMES */
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...)
+#endif /* IPECAMERA_DEBUG_BROKEN_FRAMES */
+
+#ifdef IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS
+# define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+#else /* IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS */
+# define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...)
+#endif /* IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS */
+
+#define ipecamera_debug(function, ...) \
+    IPECAMERA_DEBUG_##function##_MESSAGE(IPECAMERA_DEBUG_##function, __VA_ARGS__)
+
+#define ipecamera_debug_buffer(function, ...) \
+    IPECAMERA_DEBUG_##function##_BUFFER(IPECAMERA_DEBUG_##function, __VA_ARGS__)
+
 
 typedef uint32_t ipecamera_payload_t;
 

@@ -61,15 +61,7 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
     printf("%lu\n", ctx->raw_size);*/
     res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->frame[buf_ptr].event.raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
     if (!res) {
-#ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
-	char name[128];
-	sprintf(name, "%s/broken.%4lu", IPECAMERA_DEBUG_BROKEN_FRAMES, ctx->event_id);
-	FILE *f = fopen(name, "w");
-	if (f) {
-	    fwrite(ctx->buffer + buf_ptr * ctx->padded_size, ctx->raw_size, 1, f);
-	    fclose(f);
-	}
-#endif /* IPECAMERA_DEBUG_BROKEN_FRAMES */
+	ipecamera_debug_buffer(BROKEN_FRAMES, ctx->frame[buf_ptr].event.raw_size, ctx->buffer + buf_ptr * ctx->padded_size, PCILIB_DEBUG_BUFFER_MKDIR, "broken_frame.%4lu", ctx->event_id);
         err = PCILIB_ERROR_FAILED;
         ctx->frame[buf_ptr].event.image_broken = err;
 	goto ready;

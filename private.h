@@ -6,32 +6,33 @@
 #include <pcilib/debug.h>
 #include "ipecamera.h"
 
-//#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
-#define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
-//#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
-#define IPECAMERA_BUG_POSTPONED_READ
-//#define IPECAMERA_ANNOUNCE_READY		//**< announce new event only after the reconstruction is done */
-
 #define IPECAMERA_DEBUG
-
 #ifdef IPECAMERA_DEBUG
+//# define IPECAMERA_DEBUG_RAW_FRAMES
 # define IPECAMERA_DEBUG_BROKEN_FRAMES
 # define IPECAMERA_DEBUG_RAW_PACKETS
 #endif /* IPECAMERA_DEBUG */
 
-#define IPECAMERA_REGISTER_TIMEOUT 10000	//**< us */
-#define IPECAMERA_DMA_TIMEOUT 50000		//**< us */
+//#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
+#define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
+//#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
+//#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
+//#define IPECAMERA_CLEAN_ON_START		//**< Read all the data from DMA before starting of recording */
+#define IPECAMERA_ADJUST_BUFFER_SIZE		//**< Adjust default buffer size based on the hardware capabilities */
 
 #define IPECAMERA_DEFAULT_BUFFER_SIZE 64  	//**< should be power of 2 */
 #define IPECAMERA_RESERVE_BUFFERS 2		//**< Return Frame is Lost error, if requested frame will be overwritten after specified number of frames
-#define IPECAMERA_SLEEP_TIME 250000 		//**< Michele thinks 250 should be enough, but reset failing in this case */
-#define IPECAMERA_NEXT_FRAME_DELAY 1000 	//**< Michele requires 30000 to sync between End Of Readout and next Frame Req */
-#define IPECAMERA_WAIT_FRAME_RCVD_TIME 0 	//**< by Uros ,wait 6 ms */
-#define IPECAMERA_TRIGGER_WAIT_IDLE 200000	//**< In trigger call allow specified timeout for camera to get out of busy state. Set 0 to fail immideatly */
-#define IPECAMERA_READ_STATUS_DELAY 1000	//**< According to Uros, 1ms delay needed before consequitive reads from status registers */
 
-#define IPECAMERA_NOFRAME_SLEEP 100
-#define IPECAMERA_NOFRAME_PREPROC_SLEEP 100
+#define IPECAMERA_DMA_TIMEOUT 50000		//**< Default DMA timeout */
+#define IPECAMERA_TRIGGER_TIMEOUT 200000	//**< In trigger call allow specified timeout for camera to get out of busy state. Set 0 to fail immideatly */
+#define IPECAMERA_CMOSIS_RESET_DELAY 250000 	//**< Michele thinks 250 should be enough, but reset failing in this case */
+#define IPECAMERA_CMOSIS_REGISTER_DELAY 250000 	//**< Michele thinks 250 should be enough, but reset failing in this case */
+#define IPECAMERA_SPI_REGISTER_DELAY 10000	//**< Delay between consequitive access to the registers */
+#define IPECAMERA_NEXT_FRAME_DELAY 1000 	//**< Michele requires 30000 to sync between End Of Readout and next Frame Req */
+#define IPECAMERA_TRIGGER_DELAY 0 		//**< Defines how long the trigger bits should be set */
+#define IPECAMERA_READ_STATUS_DELAY 1000	//**< According to Uros, 1ms delay needed before consequitive reads from status registers */
+#define IPECAMERA_NOFRAME_SLEEP 100		//**< Sleep while polling for a new frame in reader */
+#define IPECAMERA_NOFRAME_PREPROC_SLEEP 100	//**< Sleep while polling for a new frame in pre-processor */
 
 //#define IPECAMERA_MAX_LINES 1088
 #define IPECAMERA_MAX_LINES 2048
@@ -54,6 +55,14 @@
 #define IPECAMERA_MODE_12_BIT_ADC		2
 #define IPECAMERA_MODE_11_BIT_ADC		1
 #define IPECAMERA_MODE_10_BIT_ADC		0
+
+#ifdef IPECAMERA_DEBUG_RAW_FRAMES
+# define IPECAMERA_DEBUG_RAW_FRAMES_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_RAW_FRAMES_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+#else /* IPECAMERA_DEBUG_RAW_FRAMES */
+# define IPECAMERA_DEBUG_RAW_FRAMES_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_RAW_FRAMES_BUFFER(function, ...)
+#endif /* IPECAMERA_DEBUG_RAW_FRAMES */
 
 #ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
 # define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
@@ -116,7 +125,6 @@ struct ipecamera_s {
     
     pcilib_dma_engine_t rdma, wdma;
 
-    pcilib_register_t packet_len_reg;
     pcilib_register_t control_reg, status_reg;
     pcilib_register_t status2_reg, status3_reg;
     pcilib_register_t n_lines_reg;

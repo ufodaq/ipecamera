@@ -1,0 +1,6 @@
+ - Bring back sanity control (what to check?)
+    After pcilib_start, pcilib_reset, pcilib_trigger
+ - Implement proper reset function (what shall be in?)
+ - Detect actual max_lines (How?)
+ - When computing time for next trigger we should take into 
+ the account: exposure time + hw readout time (complete formula)

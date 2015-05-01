@@ -89,11 +89,9 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	memset(ctx, 0, sizeof(ipecamera_t));
 
 	ctx->buffer_size = IPECAMERA_DEFAULT_BUFFER_SIZE;
+
 	ctx->dim.bpp = sizeof(ipecamera_pixel_t) * 8;
 
-	    // We need DMA engine initialized to resolve DMA registers
-//	FIND_REG(packet_len_reg, "fpga", "xrawdata_packet_length");
-	
 	FIND_REG(status_reg, "fpga", "status");
 	FIND_REG(control_reg, "fpga", "control");
 
@@ -112,7 +110,6 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	FIND_REG(max_frames_reg, "fpga", "ddr_max_frames");
 	FIND_REG(num_frames_reg, "fpga", "ddr_num_frames");
 
-
 	GET_REG(firmware_version_reg, value);
 	switch (value) {
 	 case 5:
@@ -123,12 +120,15 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
     	    pcilib_warning("Unsupported version of firmware (%lu)", value);
 	}
 
-#ifdef IPECAMERA_BUG_POSTPONED_READ
+#ifdef IPECAMERA_ADJUST_BUFFER_SIZE 
 	GET_REG(max_frames_reg, value);
 	if ((value + IPECAMERA_RESERVE_BUFFERS + 3) > ctx->buffer_size) {
+	    int val, bits = 0;
 	    ctx->buffer_size = (value + 1) + IPECAMERA_RESERVE_BUFFERS + 2;
+	    for (val = ctx->buffer_size; val; val = val >> 1) bits++;
+	    ctx->buffer_size = 1 << bits; 
 	}
-#endif /* IPECAMERA_BUG_POSTPONED_READ */
+#endif /* IPECAMERA_ADJUST_BUFFER_SIZE */
 
 
 	ctx->rdma = PCILIB_DMA_ENGINE_INVALID;
@@ -201,11 +201,6 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
     
-    if (!ctx->firmware) {
-	pcilib_warning("Unsupported version of firmware (%lu)", ctx->firmware);
-	return 0;
-    }
-
     pcilib = vctx->pcilib;
     control = ctx->control_reg;
     status = ctx->status_reg;
@@ -216,7 +211,7 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	pcilib_error("Error setting FPGA reset bit");
 	return err;
     }
-    usleep(IPECAMERA_SLEEP_TIME);
+    usleep(IPECAMERA_CMOSIS_RESET_DELAY);
 
 	// Remove Reset bit to CMOSIS
     err = pcilib_write_register_by_id(pcilib, control, 0x1e1);
@@ -224,7 +219,7 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	pcilib_error("Error reseting FPGA reset bit");
 	return err;
     }
-    usleep(IPECAMERA_SLEEP_TIME);
+    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
 	// Special settings for CMOSIS v.2
     value = 01; err = pcilib_write_register_space(pcilib, "cmosis", 115, 1, &value);
@@ -232,14 +227,14 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	pcilib_error("Error setting CMOSIS configuration");
 	return err;
     }
-    usleep(IPECAMERA_SLEEP_TIME);
+    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
     value = 07; err = pcilib_write_register_space(pcilib, "cmosis", 82, 1, &value);
     if (err) {
 	pcilib_error("Error setting CMOSIS configuration");
 	return err;
     }
-    usleep(IPECAMERA_SLEEP_TIME);
+    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
 	// Set default parameters
     err = pcilib_write_register_by_id(pcilib, control, IPECAMERA_IDLE);
@@ -261,9 +256,7 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	return PCILIB_ERROR_VERIFY;
     }
 
-    // DS: Get rid of pending DMA data
-
-    return 0;    
+    return pcilib_skip_dma(vctx->pcilib, ctx->rdma);
 }
 
 
@@ -285,11 +278,6 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
 
-    if (!ctx->firmware) {
-	pcilib_error("Unsupported version of firmware (%lu)", ctx->firmware);
-	return PCILIB_ERROR_INVALID_REQUEST;
-    }
-    
     if (ctx->started) {
 	pcilib_error("IPECamera grabbing is already started");
 	return PCILIB_ERROR_INVALID_REQUEST;
@@ -394,40 +382,19 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	}
     }
     
-/*    
-    if (!err) {
-	ctx->wdma = pcilib_find_dma_by_addr(vctx->pcilib, PCILIB_DMA_TO_DEVICE, IPECAMERA_DMA_ADDRESS);
-	if (ctx->wdma == PCILIB_DMA_ENGINE_INVALID) {
-	    err = PCILIB_ERROR_NOTFOUND;
-	    pcilib_error("The S2C channel of IPECamera DMA Engine (%u) is not found", IPECAMERA_DMA_ADDRESS);
-	} else {
-	    err = pcilib_start_dma(vctx->pcilib, ctx->wdma, PCILIB_DMA_FLAGS_DEFAULT);
-	    if (err) {
-		ctx->wdma = PCILIB_DMA_ENGINE_INVALID;
-		pcilib_error("Failed to initialize S2C channel of IPECamera DMA Engine (%u)", IPECAMERA_DMA_ADDRESS);
-	    }
-	}
-    }
-*/    
-
-/*
-    SET_REG(packet_len_reg, IPECAMERA_DMA_PACKET_LENGTH);
-*/
-
     if (err) {
         ipecamera_stop(vctx, PCILIB_EVENT_FLAGS_DEFAULT);
 	return err;
     }
 
-	// Clean DMA
-#ifndef IPECAMERA_BUG_POSTPONED_READ
+#ifdef IPECAMERA_CLEAN_ON_START
     err = pcilib_skip_dma(vctx->pcilib, ctx->rdma);
     if (err) {
         ipecamera_stop(vctx, PCILIB_EVENT_FLAGS_DEFAULT);
 	pcilib_error("Can't start grabbing, device continuously writes unexpected data using DMA engine");
 	return err;
     }
-#endif /* ! IPECAMERA_BUG_POSTPONED_READ */
+#endif /* IPECAMERA_CLEAN_ON_START */
 
     if (vctx->params.autostop.duration) {
 	gettimeofday(&ctx->autostop.timestamp, NULL);
@@ -635,11 +602,6 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
 
-    if (!ctx->firmware) {
-	pcilib_error("Unsupported version of firmware (%lu)", ctx->firmware);
-	return PCILIB_ERROR_INVALID_REQUEST;
-    }
-
     pcilib_sleep_until_deadline(&ctx->next_trigger);
 /*
     GET_REG(num_frames_reg, value);
@@ -650,16 +612,13 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 
     GET_REG(status2_reg, value);
     if (value&0x40000000) {
-//	printf("%x\n", value);
-//	GET_REG(status3_reg, value);
-//	printf("3: %x\n", value);
-//	GET_REG(status_reg, value);
-//	printf("1: %x\n", value);
+	if (value == 0xffffffff)
+	    pcilib_info("Failed to read status2_reg while triggering");
 
-#ifdef IPECAMERA_TRIGGER_WAIT_IDLE
-	if (IPECAMERA_TRIGGER_WAIT_IDLE) {
+#ifdef IPECAMERA_TRIGGER_TIMEOUT
+	if (IPECAMERA_TRIGGER_TIMEOUT) {
 	    struct timeval deadline;
-	    pcilib_calc_deadline(&deadline, IPECAMERA_TRIGGER_WAIT_IDLE);
+	    pcilib_calc_deadline(&deadline, IPECAMERA_TRIGGER_TIMEOUT);
 	    do {
 		usleep(IPECAMERA_READ_STATUS_DELAY);
 		GET_REG(status2_reg, value);
@@ -672,11 +631,10 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 
     GET_REG(control_reg, value); 
     SET_REG(control_reg, value|IPECAMERA_FRAME_REQUEST);
-    usleep(IPECAMERA_WAIT_FRAME_RCVD_TIME);
-    //DS: CHECK_REG(status_reg, IPECAMERA_EXPECTED_STATUS);
+    usleep(IPECAMERA_TRIGGER_DELAY);
     SET_REG(control_reg, value);
 
-	// We need to compute it differently, on top of that add exposure time and the time FPGA takes to read frame from CMOSIS
+	// DS: We need to compute it differently, on top of that add exposure time and the time FPGA takes to read frame from CMOSIS
     pcilib_calc_deadline(&ctx->next_trigger, IPECAMERA_NEXT_FRAME_DELAY);
 
     return 0;

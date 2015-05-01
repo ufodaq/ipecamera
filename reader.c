@@ -110,7 +110,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    ipecamera_debug_buffer(RAW_PACKETS, bufsize, NULL, 0, "frame%4lu/frame%9lu.invalid", ctx->event_id, packet_id);
 	    
 	    if (invalid_frame_id != ctx->event_id) {
-//		pcilib_warning("No frame magic in DMA packet of %u bytes, current event %lu", bufsize, ctx->event_id);
+		pcilib_info("No frame magic in DMA packet of %u bytes, current event %lu", bufsize, ctx->event_id);
 		invalid_frame_id = ctx->event_id;
 	    }
 
@@ -141,7 +141,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    ctx->frame[ctx->buffer_pos].event.info.offset = (((uint32_t*)buf)[7] & 0xFFFFFF) * 80;
 	    gettimeofday(&ctx->frame[ctx->buffer_pos].event.info.timestamp, NULL);
 	} else {
-//	    pcilib_warning("Frame magic is not found, ignoring broken data...");
+	    pcilib_info("Frame magic is not found, ignoring broken data...");
 	    return PCILIB_STREAMING_CONTINUE;
 	}
     }
@@ -159,7 +159,6 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	
 	if ((need + sizeof(frame_magic)) < bufsize) {
 	    extra_data = bufsize - need;
-	    //bufsize = need;
 	    eof = 1;
 	}
 
@@ -180,7 +179,6 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     }
 
     ctx->cur_size += bufsize;
-//    printf("%i: %i %i\n", ctx->buffer_pos, ctx->cur_size, bufsize);
 
     if (ctx->cur_size >= ctx->roi_raw_size) {
 	eof = 1;
@@ -227,15 +225,13 @@ void *ipecamera_reader_thread(void *user) {
 		}
 		usleep(IPECAMERA_NOFRAME_SLEEP);
 	    } else pcilib_error("DMA error while reading IPECamera frames, error: %i", err);
-	} //else printf("no error\n");
-
-	//usleep(1000);
+	} 
     }
     
     ctx->run_streamer = 0;
     
-//    if (ctx->cur_size)
-//	pcilib_error("partialy read frame after stop signal, %zu bytes in the buffer", ctx->cur_size);
+    if (ctx->cur_size)
+	pcilib_info("partialy read frame after stop signal, %zu bytes in the buffer", ctx->cur_size);
 
     return NULL;
 }

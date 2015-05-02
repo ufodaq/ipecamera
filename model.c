@@ -6,6 +6,7 @@
 #include "base.h"
 #include "cmosis.h"
 #include "model.h"
+#include "version.h"
 
 enum ipecamera_protocol_s {
     IPECAMERA_PROTOCOL_CMOSIS = PCILIB_REGISTER_PROTOCOL0,
@@ -13,7 +14,7 @@ enum ipecamera_protocol_s {
 
 
 static const pcilib_register_protocol_api_description_t ipecamera_cmosis_protocol_api =
-    { NULL, NULL, ipecamera_cmosis_read, ipecamera_cmosis_write };
+    { IPECAMERA_VERSION, NULL, NULL, ipecamera_cmosis_read, ipecamera_cmosis_write };
 
 /*
 static const pcilib_dma_description_t ipecamera_dma =
@@ -150,6 +151,8 @@ static const pcilib_event_data_type_description_t ipecamera_data_types[] = {
 };
 
 pcilib_event_api_description_t ipecamera_image_api = {
+    IPECAMERA_VERSION,
+
     ipecamera_init,
     ipecamera_free,
 

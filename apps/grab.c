@@ -1,9 +1,21 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <pcilib.h>
 #include <pcilib/error.h>
 
 #include <ipecamera.h>
+
+void log_error(void *arg, const char *file, int line, pcilib_log_priority_t prio, const char *format, va_list ap) {
+    vprintf(format, ap);
+    printf("\n");
+
+    if (prio == PCILIB_LOG_ERROR) {
+	printf("Exiting at [%s:%u]\n\n", file, line);
+	exit(-1);
+    }
+}
+
 
 int main() {
     int err;
@@ -13,6 +25,8 @@ int main() {
     size_t size;
     void *data;
     FILE *f;
+
+    pcilib_set_logger(PCILIB_LOG_WARNING, &log_error, NULL);
 
     pcilib_t *pcilib = pcilib_open("/dev/fpga0", "ipecamera");
     if (!pcilib) pcilib_error("Error opening device");

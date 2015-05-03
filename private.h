@@ -8,9 +8,10 @@
 
 #define IPECAMERA_DEBUG
 #ifdef IPECAMERA_DEBUG
-//# define IPECAMERA_DEBUG_RAW_FRAMES
-# define IPECAMERA_DEBUG_BROKEN_FRAMES
-# define IPECAMERA_DEBUG_RAW_PACKETS
+//# define IPECAMERA_DEBUG_RAW_FRAMES		//**< Store all raw frames */
+# define IPECAMERA_DEBUG_BROKEN_FRAMES		//**< Store broken frames in the specified directory */
+# define IPECAMERA_DEBUG_RAW_PACKETS		//**< Store all raw packets read from DMA grouped in frames */
+# define IPECAMERA_DEBUG_HARDWARE		//**< Produce various debugging information about ipecamera operation */
 #endif /* IPECAMERA_DEBUG */
 
 //#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
@@ -72,13 +73,22 @@
 # define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_BROKEN_FRAMES */
 
-#ifdef IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS
+#ifdef IPECAMERA_DEBUG_RAW_PACKETS
 # define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
 # define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
-#else /* IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS */
+#else /* IPECAMERA_DEBUG_RAW_PACKETS */
 # define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...)
-#endif /* IPECAMERA_IPECAMERA_DEBUG_RAW_PACKETS */
+#endif /* IPECAMERA_DEBUG_RAW_PACKETS */
+
+#ifdef IPECAMERA_DEBUG_HARDWARE
+# define IPECAMERA_DEBUG_HARDWARE_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_HARDWARE_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+#else /* IPECAMERA_DEBUG_HARDWARE */
+# define IPECAMERA_DEBUG_HARDWARE_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_HARDWARE_BUFFER(function, ...)
+#endif /* IPECAMERA_DEBUG_HARDWARE */
+
 
 #define ipecamera_debug(function, ...) \
     IPECAMERA_DEBUG_##function##_MESSAGE(IPECAMERA_DEBUG_##function, __VA_ARGS__)

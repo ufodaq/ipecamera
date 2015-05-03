@@ -110,7 +110,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    ipecamera_debug_buffer(RAW_PACKETS, bufsize, NULL, 0, "frame%4lu/frame%9lu.invalid", ctx->event_id, packet_id);
 	    
 	    if (invalid_frame_id != ctx->event_id) {
-		pcilib_info("No frame magic in DMA packet of %u bytes, current event %lu", bufsize, ctx->event_id);
+		ipecamera_debug(HARDWARE, "No frame magic in DMA packet of %u bytes, current event %lu", bufsize, ctx->event_id);
 		invalid_frame_id = ctx->event_id;
 	    }
 
@@ -141,7 +141,7 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    ctx->frame[ctx->buffer_pos].event.info.offset = (((uint32_t*)buf)[7] & 0xFFFFFF) * 80;
 	    gettimeofday(&ctx->frame[ctx->buffer_pos].event.info.timestamp, NULL);
 	} else {
-	    pcilib_info("Frame magic is not found, ignoring broken data...");
+	    ipecamera_debug(HARDWARE, "Frame magic is not found, ignoring broken data...");
 	    return PCILIB_STREAMING_CONTINUE;
 	}
     }

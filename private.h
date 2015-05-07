@@ -91,7 +91,7 @@
 
 
 #define ipecamera_debug(function, ...) \
-    IPECAMERA_DEBUG_##function##_MESSAGE(IPECAMERA_DEBUG_##function, __VA_ARGS__)
+    IPECAMERA_DEBUG_##function##_MESSAGE(IPECAMERA_DEBUG_##function, PCILIB_LOG_DEFAULT, __VA_ARGS__)
 
 #define ipecamera_debug_buffer(function, ...) \
     IPECAMERA_DEBUG_##function##_BUFFER(IPECAMERA_DEBUG_##function, __VA_ARGS__)

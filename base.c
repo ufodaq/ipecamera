@@ -132,7 +132,6 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 
 
 	ctx->rdma = PCILIB_DMA_ENGINE_INVALID;
-	ctx->wdma = PCILIB_DMA_ENGINE_INVALID;
 
 	if (err) {
 	    free(ctx);
@@ -534,12 +533,6 @@ int ipecamera_stop(pcilib_context_t *vctx, pcilib_event_flags_t flags) {
 	    pthread_rwlock_destroy(&ctx->frame[i].mutex);
 	}
 	ctx->frame_mutex_destroy = 0;
-    }
-    
-
-    if (ctx->wdma != PCILIB_DMA_ENGINE_INVALID) {
-	pcilib_stop_dma(vctx->pcilib, ctx->wdma, PCILIB_DMA_FLAGS_DEFAULT);
-	ctx->wdma = PCILIB_DMA_ENGINE_INVALID;
     }
 
     if (ctx->rdma != PCILIB_DMA_ENGINE_INVALID) {

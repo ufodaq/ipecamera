@@ -4,3 +4,5 @@
  - Detect actual max_lines (How?)
  - When computing time for next trigger we should take into 
  the account: exposure time + hw readout time (complete formula)
+ - Autostop by event is broken, we are not numbering from 0
+ any more

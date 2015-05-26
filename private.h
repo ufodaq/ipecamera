@@ -126,14 +126,11 @@ struct ipecamera_s {
     ipecamera_pixel_t *image;
     size_t size;
 
-    pcilib_event_callback_t cb;
-    void *cb_user;
-
     volatile pcilib_event_id_t event_id;
     volatile pcilib_event_id_t preproc_id;
     pcilib_event_id_t reported_id;
-    
-    pcilib_dma_engine_t rdma, wdma;
+
+    pcilib_dma_engine_t rdma;
 
     pcilib_register_t control_reg, status_reg;
     pcilib_register_t status2_reg, status3_reg;

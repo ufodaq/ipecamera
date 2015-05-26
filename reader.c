@@ -134,10 +134,11 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 #endif /* IPECAMERA_BUG_INCOMPLETE_PACKETS */
 
 	if ((bufsize >= 8)&&(!memcmp(buf, frame_magic, sizeof(frame_magic)))) {
+	    // size_t first_line = ((uint32_t*)buf)[4] & 0x7FF;
 	    size_t n_lines = ((uint32_t*)buf)[5] & 0x7FF;
 	    ipecamera_compute_buffer_size(ctx, n_lines);
 
-	    ctx->frame[ctx->buffer_pos].event.info.seqnum = ((uint32_t*)buf)[6] & 0x1FFFFFF;
+	    ctx->frame[ctx->buffer_pos].event.info.seqnum = ((uint32_t*)buf)[6] & 0xFFFFFF;
 	    ctx->frame[ctx->buffer_pos].event.info.offset = (((uint32_t*)buf)[7] & 0xFFFFFF) * 80;
 	    gettimeofday(&ctx->frame[ctx->buffer_pos].event.info.timestamp, NULL);
 	} else {

@@ -77,7 +77,7 @@ static inline int ipecamera_new_frame(ipecamera_t *ctx) {
     return 0;
 }
 
-static uint32_t frame_magic[5] = { 0x51111111, 0x52222222, 0x53333333, 0x54444444, 0x55555555 };
+static uint32_t frame_magic[4] = { 0x51111111, 0x52222222, 0x53333333, 0x54444444 };
 
 static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t bufsize, void *buf) {
     int res;

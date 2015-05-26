@@ -21,7 +21,7 @@
 //#define IPECAMERA_CLEAN_ON_START		//**< Read all the data from DMA before starting of recording */
 #define IPECAMERA_ADJUST_BUFFER_SIZE		//**< Adjust default buffer size based on the hardware capabilities */
 
-#define IPECAMERA_DEFAULT_BUFFER_SIZE 64  	//**< should be power of 2 */
+#define IPECAMERA_DEFAULT_BUFFER_SIZE 256  	//**< should be power of 2 */
 #define IPECAMERA_RESERVE_BUFFERS 2		//**< Return Frame is Lost error, if requested frame will be overwritten after specified number of frames
 
 #define IPECAMERA_DMA_TIMEOUT 50000		//**< Default DMA timeout */

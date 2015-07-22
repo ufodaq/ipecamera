@@ -13,6 +13,9 @@
 #define IPECAMERA_CMOSIS_REGISTER_WRITE 	(IPECAMERA_REGISTER_SPACE + 0)
 #define IPECAMERA_CMOSIS_REGISTER_READ 		(IPECAMERA_REGISTER_SPACE + 16)
 
+extern const pcilib_register_description_t cmosis_registers[];
+extern const pcilib_register_description_t cmosis20000_registers[];
+
 const pcilib_model_description_t *pcilib_get_event_model(pcilib_t *pcilib, unsigned short vendor_id, unsigned short device_id, const char *model);
 
 #endif /* _IPECAMERA_MODEL_H */

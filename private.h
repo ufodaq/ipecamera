@@ -134,10 +134,10 @@ struct ipecamera_s {
 
     pcilib_register_t control_reg, status_reg;
     pcilib_register_t status2_reg, status3_reg;
-    pcilib_register_t n_lines_reg;
-    uint16_t line_reg;
-    pcilib_register_t exposure_reg;
-    pcilib_register_t flip_reg;
+//    pcilib_register_t n_lines_reg;
+//    uint16_t line_reg;
+//    pcilib_register_t exposure_reg;
+//    pcilib_register_t flip_reg;
 
     pcilib_register_t firmware_version_reg;
     pcilib_register_t adc_resolution_reg;

@@ -34,7 +34,8 @@ static const pcilib_register_bank_description_t ipecamera_banks[] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, NULL }
 };
 
-static const pcilib_register_description_t ipecamera_registers[] = {
+
+const pcilib_register_description_t cmosis_registers[] = {
 {1, 	0, 	16, 	1088, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines",  ""},
 {3, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start1", ""},
 {5, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start2", ""},
@@ -80,6 +81,57 @@ static const pcilib_register_description_t ipecamera_registers[] = {
 {111, 	0, 	1, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_bit_mode", ""},
 {112, 	0, 	2, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_adc_resolution", ""},
 {115, 	0, 	1, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_special_115", ""},
+{0,	0,	0,	0,	0,                        0,                  0,                        0,                     NULL, NULL}
+};
+
+const pcilib_register_description_t cmosis20000_registers[] = {
+{15, 	0, 	2, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_nr_slopes", ""},
+{22, 	0, 	16, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_frames", ""},
+{24, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start_single",  ""},
+{26, 	0, 	16, 	3840, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines_single",  ""},
+{28, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_sub_s", ""},
+{30, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_sub_a", ""},
+{32, 	0, 	16, 	3840, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_exp_time", ""},
+{37, 	0, 	2, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_nr_slopes", ""},
+{39, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_exp_s2", ""},
+{42, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_exp_s3", ""},
+{44, 	0, 	1, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_multwin_en", ""},
+{45, 	0, 	16, 	3840, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines",  ""},
+{47, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start1", ""},
+{49, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start2", ""},
+{51, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start3", ""},
+{53, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start4", ""},
+{55,	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start5", ""},
+{57, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start6", ""},
+{59, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start7", ""},
+{61, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start8", ""},
+{63, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines1", ""},
+{65, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines2", ""},
+{67, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines3", ""},
+{69, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines4", ""},
+{71, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines5", ""},
+{73, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines6", ""},
+{75, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines7", ""},
+{77, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines8", ""},
+{80, 	0, 	1, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_output_mode", ""},
+{81, 	0, 	1, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_exp_ext", ""},
+{82, 	0, 	8, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_fot_mult", ""},
+{83, 	0, 	1, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_testpattern_en", ""},
+{85, 	0, 	1, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_image_flipping", ""},
+{88, 	0, 	15, 	2840, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_offset", ""},
+{90, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_training_pattern", ""},
+{93, 	2, 	2, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_pga", ""},
+{95, 	0, 	19, 	0x7FFFF,0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_channel_en", ""},
+{101, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_temp", ""},
+{112, 	0, 	7, 	0, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_vlevel_s2_ex", ""},
+{113, 	0, 	7, 	0, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_vlevel_s3_ex", ""},
+{114, 	0, 	7, 	0, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_vlevel_s2", ""},
+{115, 	0, 	7, 	0, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_vlevel_s3", ""},
+{103, 	0, 	6, 	32, 	0,                        PCILIB_REGISTER_R, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_adc_gain", ""},
+{0,	0,	0,	0,	0,                        0,                  0,                        0,                     NULL, NULL}
+};
+
+static const pcilib_register_description_t ipecamera_registers[] = {
 {0x00,	0, 	32,	0,	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK1, "spi_conf_input", ""},
 {0x10,	0, 	32,	0,	0,                        PCILIB_REGISTER_R,  PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK1, "spi_conf_output", ""},
 {0x20,	0, 	32,	0,	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK1, "spi_clk_speed", ""},

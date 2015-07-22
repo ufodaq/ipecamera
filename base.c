@@ -98,11 +98,6 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	FIND_REG(status2_reg, "fpga", "status2");
 	FIND_REG(status3_reg, "fpga", "status3");
 
-	FIND_REG(n_lines_reg, "cmosis", "cmosis_number_lines");
-	FIND_REG(line_reg, "cmosis", "cmosis_start1");
-	FIND_REG(exposure_reg, "cmosis", "cmosis_exp_time");
-	FIND_REG(flip_reg, "cmosis", "cmosis_image_flipping");
-	
 	FIND_REG(firmware_version_reg, "fpga", "firmware_version");
 	FIND_REG(adc_resolution_reg, "fpga", "adc_resolution");
 	FIND_REG(output_mode_reg, "fpga", "output_mode");
@@ -114,11 +109,22 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	switch (value) {
 	 case 5:
 	    ctx->firmware = value;
+	    err = pcilib_add_registers(pcilib, 0, cmosis_registers);
+	    break;
+	 case 6:
+	    ctx->firmware = value;
+	    err = pcilib_add_registers(pcilib, 0, cmosis20000_registers);
 	    break;
 	 default:
 	    ctx->firmware = 5;
     	    pcilib_warning("Unsupported version of firmware (%lu)", value);
 	}
+
+//	FIND_REG(n_lines_reg, "cmosis", "cmosis_number_lines"); // cmosis_number_lines_single v.6 ?
+//	FIND_REG(line_reg, "cmosis", "cmosis_start1"); // cmosis_start_single v.6 ?
+//	FIND_REG(exposure_reg, "cmosis", "cmosis_exp_time");
+//	FIND_REG(flip_reg, "cmosis", "cmosis_image_flipping");
+
 
 #ifdef IPECAMERA_ADJUST_BUFFER_SIZE 
 	GET_REG(max_frames_reg, value);

@@ -21,34 +21,99 @@
 #include "private.h"
 #include "reader.h"
 
+//#define CHECK_FRAME_MAGIC(buf) \
+//	memcmp(buf, ((void*)frame_magic) + 1, sizeof(frame_magic) - 1)
 
-int ipecamera_compute_buffer_size(ipecamera_t *ctx, size_t lines) {
-    const size_t header_size = 8 * sizeof(ipecamera_payload_t);
-    const size_t footer_size = 8 * sizeof(ipecamera_payload_t);
+#define CHECK_FRAME_MAGIC(buf) \
+	memcmp(((ipecamera_payload_t*)(buf)) + 1, &frame_magic[1], sizeof(frame_magic) - sizeof(ipecamera_payload_t))
 
+static ipecamera_payload_t frame_magic[3] = { 0x51111111, 0x52222222, 0x53333333 };
+
+
+
+int ipecamera_compute_buffer_size(ipecamera_t *ctx, ipecamera_format_t format, size_t header_size, size_t lines) {
+//    const size_t header_size = 8 * sizeof(ipecamera_payload_t);
+    const size_t footer_size = CMOSIS_FRAME_TAIL_SIZE;
+
+    size_t max_channels;
     size_t line_size, raw_size, padded_blocks;
 
-    switch (ctx->firmware) {
+    switch (format) {
+     case IPECAMERA_FORMAT_CMOSIS:
+	max_channels = CMOSIS_MAX_CHANNELS;
+	line_size = (1 + CMOSIS_PIXELS_PER_CHANNEL) * 32; 
+	break;
+     case IPECAMERA_FORMAT_CMOSIS20:
+	max_channels = CMOSIS20_MAX_CHANNELS;
+	line_size = (1 + CMOSIS20_PIXELS_PER_CHANNEL) * 32 / 2;
+	break;
      default:
-	line_size = (1 + IPECAMERA_PIXELS_PER_CHANNEL) * 32; 
-	raw_size = lines * line_size;
-	raw_size *= 16 / ctx->cmosis_outputs;
-	raw_size += header_size  + footer_size;
-
-#ifdef IPECAMERA_BUG_MISSING_PAYLOAD
-	    // As I understand, the first 32-byte packet is missing, so we need to substract 32
-	raw_size -= 32;
-#endif /* IPECAMERA_BUG_MISSING_PAYLOAD */
+	pcilib_warning("Unsupported version (%u) of frame format...", format);
+	return PCILIB_ERROR_NOTSUPPORTED;
     }
 
+    raw_size = lines * line_size;
+    raw_size *= max_channels / ctx->cmosis_outputs;
+    raw_size += header_size + footer_size;
+
+#ifdef IPECAMERA_BUG_MISSING_PAYLOAD
+        // As I understand, the first 32-byte packet is missing, so we need to substract 32 (both CMOSIS and CMOSIS20)
+    raw_size -= 32;
+#endif /* IPECAMERA_BUG_MISSING_PAYLOAD */
+
     padded_blocks = raw_size / IPECAMERA_DMA_PACKET_LENGTH + ((raw_size % IPECAMERA_DMA_PACKET_LENGTH)?1:0);
-    
+
     ctx->roi_raw_size = raw_size;
     ctx->roi_padded_size = padded_blocks * IPECAMERA_DMA_PACKET_LENGTH;
-//    printf("%lu %lu\n", ctx->roi_raw_size, ctx->roi_padded_size);
 
     return 0;
 }
+
+
+static int ipecamera_parse_header(ipecamera_t *ctx, ipecamera_payload_t *buf, size_t buf_size) {
+    int last = buf[0] & 1;
+    int version = (buf[0] >> 1) & 7;
+    size_t size = 0, n_lines;
+    ipecamera_format_t format = IPECAMERA_FORMAT_CMOSIS;
+
+    switch (version) {
+     case 0:
+	n_lines = ((uint32_t*)buf)[5] & 0x7FF;
+	ctx->frame[ctx->buffer_pos].event.info.seqnum = buf[6] & 0xFFFFFF;
+	ctx->frame[ctx->buffer_pos].event.info.offset = (buf[7] & 0xFFFFFF) * 80;
+	break;
+     case 1:
+	n_lines = ((uint32_t*)buf)[5] & 0xFFFF;
+	if (!n_lines) {
+	    pcilib_error("The frame header claims 0 lines in the data");
+	    return 0;
+	}
+
+	ctx->frame[ctx->buffer_pos].event.info.seqnum = buf[6] & 0xFFFFFF;
+	ctx->frame[ctx->buffer_pos].event.info.offset = (buf[7] & 0xFFFFFF) * 80;
+	format = (buf[6] >> 24)&0x0F;
+        break;
+     default:
+	ipecamera_debug(HARDWARE, "Incorrect version of the frame header, ignoring broken data...");
+	return 0;
+    }
+    gettimeofday(&ctx->frame[ctx->buffer_pos].event.info.timestamp, NULL);
+
+    ipecamera_debug(FRAME_HEADERS, "frame %lu: %x %x %x %x", ctx->frame[ctx->buffer_pos].event.info.seqnum, buf[0], buf[1], buf[2], buf[3]);
+    ipecamera_debug(FRAME_HEADERS, "frame %lu: %x %x %x %x", ctx->frame[ctx->buffer_pos].event.info.seqnum, buf[4], buf[5], buf[6], buf[7]);
+
+    while ((!last)&&((size + CMOSIS_FRAME_HEADER_SIZE) <= buf_size)) {
+	size += CMOSIS_FRAME_HEADER_SIZE;
+	last = buf[size] & 1;
+    }
+
+    size += CMOSIS_FRAME_HEADER_SIZE;
+    ipecamera_compute_buffer_size(ctx, format, size, n_lines);
+
+	// Returns total size of found headers or 0 on the error
+    return size;
+}
+
 
 static inline int ipecamera_new_frame(ipecamera_t *ctx) {
     ctx->frame[ctx->buffer_pos].event.raw_size = ctx->cur_size;
@@ -77,8 +142,6 @@ static inline int ipecamera_new_frame(ipecamera_t *ctx) {
     return 0;
 }
 
-static uint32_t frame_magic[4] = { 0x51111111, 0x52222222, 0x53333333, 0x54444444 };
-
 static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t bufsize, void *buf) {
     int res;
     int eof = 0;
@@ -102,11 +165,11 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     if (!ctx->cur_size) {
 #if defined(IPECAMERA_BUG_INCOMPLETE_PACKETS)||defined(IPECAMERA_BUG_MULTIFRAME_PACKETS)
 	size_t startpos;
-	for (startpos = 0; (startpos + sizeof(frame_magic)) <= bufsize; startpos += sizeof(uint32_t)) {
-	    if (!memcmp(buf + startpos, frame_magic, sizeof(frame_magic))) break;
+	for (startpos = 0; (startpos + CMOSIS_FRAME_HEADER_SIZE) <= bufsize; startpos += sizeof(ipecamera_payload_t)) {
+	    if (!CHECK_FRAME_MAGIC(buf + startpos)) break;
 	}
 	
-	if ((startpos + sizeof(frame_magic)) > bufsize) {
+	if ((startpos + CMOSIS_FRAME_HEADER_SIZE) > bufsize) {
 	    ipecamera_debug_buffer(RAW_PACKETS, bufsize, NULL, 0, "frame%4lu/frame%9lu.invalid", ctx->event_id, packet_id);
 	    
 	    if (invalid_frame_id != ctx->event_id) {
@@ -133,14 +196,10 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	}
 #endif /* IPECAMERA_BUG_INCOMPLETE_PACKETS */
 
-	if ((bufsize >= 8)&&(!memcmp(buf, frame_magic, sizeof(frame_magic)))) {
-	    // size_t first_line = ((uint32_t*)buf)[4] & 0x7FF;
-	    size_t n_lines = ((uint32_t*)buf)[5] & 0x7FF;
-	    ipecamera_compute_buffer_size(ctx, n_lines);
-
-	    ctx->frame[ctx->buffer_pos].event.info.seqnum = ((uint32_t*)buf)[6] & 0xFFFFFF;
-	    ctx->frame[ctx->buffer_pos].event.info.offset = (((uint32_t*)buf)[7] & 0xFFFFFF) * 80;
-	    gettimeofday(&ctx->frame[ctx->buffer_pos].event.info.timestamp, NULL);
+	if ((bufsize >= CMOSIS_FRAME_HEADER_SIZE)&&(!CHECK_FRAME_MAGIC(buf))) {
+		// We should handle the case when multi-header is split between multiple DMA packets
+	    if (!ipecamera_parse_header(ctx, buf, bufsize))
+		return PCILIB_STREAMING_CONTINUE;
 	} else {
 	    ipecamera_debug(HARDWARE, "Frame magic is not found, ignoring broken data...");
 	    return PCILIB_STREAMING_CONTINUE;
@@ -154,11 +213,11 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     if (ctx->cur_size + bufsize > ctx->roi_raw_size) {
         size_t need;
 	
-	for (need = ctx->roi_raw_size - ctx->cur_size; (need + sizeof(frame_magic)) < bufsize; need += sizeof(uint32_t)) {
-	    if (!memcmp(buf + need, frame_magic, sizeof(frame_magic))) break;
+	for (need = ctx->roi_raw_size - ctx->cur_size; (need + CMOSIS_FRAME_HEADER_SIZE) <= bufsize; need += sizeof(uint32_t)) {
+	    if (!CHECK_FRAME_MAGIC(buf + need)) break;
 	}
 	
-	if ((need + sizeof(frame_magic)) < bufsize) {
+	if ((need + CMOSIS_FRAME_HEADER_SIZE) <= bufsize) {
 	    extra_data = bufsize - need;
 	    eof = 1;
 	}

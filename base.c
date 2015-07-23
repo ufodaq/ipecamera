@@ -107,16 +107,16 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 
 	GET_REG(firmware_version_reg, value);
 	switch (value) {
-	 case 5:
+	 case IPECAMERA_FIRMWARE_UFO5:
 	    ctx->firmware = value;
 	    err = pcilib_add_registers(pcilib, 0, cmosis_registers);
 	    break;
-	 case 6:
+	 case IPECAMERA_FIRMWARE_CMOSIS20:
 	    ctx->firmware = value;
 	    err = pcilib_add_registers(pcilib, 0, cmosis20000_registers);
 	    break;
 	 default:
-	    ctx->firmware = 5;
+	    ctx->firmware = IPECAMERA_FIRMWARE_UNKNOWN;
     	    pcilib_warning("Unsupported version of firmware (%lu)", value);
 	}
 
@@ -294,25 +294,39 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     ctx->buffer_pos = 0;
     ctx->parse_data = (flags&PCILIB_EVENT_FLAG_RAW_DATA_ONLY)?0:1;
     ctx->cur_size = 0;
-    
-    ctx->dim.width = IPECAMERA_WIDTH;
-    ctx->dim.height = IPECAMERA_MAX_LINES;
-//    GET_REG(n_lines_reg, ctx->dim.height);
-    
-    GET_REG(output_mode_reg, value);
-    switch (value) {
-     case IPECAMERA_MODE_16_CHAN_IO:
-        ctx->cmosis_outputs = 16;
-        break;
-     case IPECAMERA_MODE_4_CHAN_IO:
-        ctx->cmosis_outputs = 4;
-        break;
+
+    switch (ctx->firmware) {
+     case IPECAMERA_FIRMWARE_UFO5:
+	ctx->dim.width = CMOSIS_WIDTH;
+	ctx->dim.height = CMOSIS_MAX_LINES;
+	break;
+     case IPECAMERA_FIRMWARE_CMOSIS20:
+	ctx->dim.width = CMOSIS20_WIDTH;
+	ctx->dim.height = CMOSIS20_MAX_LINES;
+	ctx->cmosis_outputs = CMOSIS20_MAX_CHANNELS;
+	break;
      default:
-        pcilib_error("IPECamera reporting invalid output_mode 0x%lx", value);
-        return PCILIB_ERROR_INVALID_STATE;
+	pcilib_error("Can't start undefined version (%lu) of IPECamera", ctx->firmware);
+	return PCILIB_ERROR_INVALID_REQUEST;
     }
-    
-    ipecamera_compute_buffer_size(ctx, ctx->dim.height);
+
+    if (ctx->firmware == IPECAMERA_FIRMWARE_UFO5) {
+	GET_REG(output_mode_reg, value);
+	switch (value) {
+	 case IPECAMERA_MODE_16_CHAN_IO:
+	    ctx->cmosis_outputs = 16;
+	    break;
+         case IPECAMERA_MODE_4_CHAN_IO:
+	    ctx->cmosis_outputs = 4;
+	    break;
+	 default:
+	    pcilib_error("IPECamera reporting invalid output_mode 0x%lx", value);
+	    return PCILIB_ERROR_INVALID_STATE;
+	}
+    }
+
+	// We should be careful here (currently firmware matches format, but this may not be the case in future)
+    ipecamera_compute_buffer_size(ctx, ctx->firmware, CMOSIS_FRAME_HEADER_SIZE, ctx->dim.height);
 
     ctx->raw_size = ctx->roi_raw_size;
     ctx->padded_size = ctx->roi_padded_size;
@@ -628,7 +642,7 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 	    return PCILIB_ERROR_BUSY;
     }
 
-    GET_REG(control_reg, value); 
+    GET_REG(control_reg, value);
     SET_REG(control_reg, value|IPECAMERA_FRAME_REQUEST);
     usleep(IPECAMERA_TRIGGER_DELAY);
     SET_REG(control_reg, value);

@@ -5,6 +5,7 @@
 #include <pcilib/model.h>
 #include <pcilib/debug.h>
 #include "ipecamera.h"
+#include "env.h"
 
 #define IPECAMERA_DEBUG
 #ifdef IPECAMERA_DEBUG
@@ -12,9 +13,10 @@
 # define IPECAMERA_DEBUG_BROKEN_FRAMES		//**< Store broken frames in the specified directory */
 # define IPECAMERA_DEBUG_RAW_PACKETS		//**< Store all raw packets read from DMA grouped in frames */
 # define IPECAMERA_DEBUG_HARDWARE		//**< Produce various debugging information about ipecamera operation */
+# define IPECAMERA_DEBUG_FRAME_HEADERS		//**< Print frame headers & footers */
 #endif /* IPECAMERA_DEBUG */
 
-//#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
+#define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 //#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
@@ -35,16 +37,24 @@
 #define IPECAMERA_NOFRAME_SLEEP 100		//**< Sleep while polling for a new frame in reader */
 #define IPECAMERA_NOFRAME_PREPROC_SLEEP 100	//**< Sleep while polling for a new frame in pre-processor */
 
-//#define IPECAMERA_MAX_LINES 1088
-#define IPECAMERA_MAX_LINES 2048
 #define IPECAMERA_EXPECTED_STATUS_4 0x08409FFFF
 #define IPECAMERA_EXPECTED_STATUS 0x08449FFFF
 
 #define IPECAMERA_END_OF_SEQUENCE 0x1F001001
 
-#define IPECAMERA_MAX_CHANNELS 16
-#define IPECAMERA_PIXELS_PER_CHANNEL 128
-#define IPECAMERA_WIDTH (IPECAMERA_MAX_CHANNELS * IPECAMERA_PIXELS_PER_CHANNEL)
+
+#define CMOSIS_FRAME_HEADER_SIZE	8 * sizeof(ipecamera_payload_t)
+#define CMOSIS_FRAME_TAIL_SIZE		8 * sizeof(ipecamera_payload_t)
+
+#define CMOSIS_MAX_CHANNELS 16
+#define CMOSIS_PIXELS_PER_CHANNEL 128
+#define CMOSIS_WIDTH (CMOSIS_MAX_CHANNELS * CMOSIS_PIXELS_PER_CHANNEL)
+//#define IPECAMERA_MAX_LINES 1088
+#define CMOSIS_MAX_LINES 2048
+#define CMOSIS20_MAX_CHANNELS 8
+#define CMOSIS20_PIXELS_PER_CHANNEL 640
+#define CMOSIS20_WIDTH (CMOSIS20_MAX_CHANNELS * CMOSIS20_PIXELS_PER_CHANNEL)
+#define CMOSIS20_MAX_LINES 3840
 
 #define IPECAMERA_FRAME_REQUEST 		0x80000209 // 0x1E9
 #define IPECAMERA_IDLE 				0x80000201 // 0x1E1
@@ -57,37 +67,46 @@
 #define IPECAMERA_MODE_11_BIT_ADC		1
 #define IPECAMERA_MODE_10_BIT_ADC		0
 
+
 #ifdef IPECAMERA_DEBUG_RAW_FRAMES
-# define IPECAMERA_DEBUG_RAW_FRAMES_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
-# define IPECAMERA_DEBUG_RAW_FRAMES_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_RAW_FRAMES_MESSAGE(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_RAW_FRAMES_BUFFER(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
 #else /* IPECAMERA_DEBUG_RAW_FRAMES */
 # define IPECAMERA_DEBUG_RAW_FRAMES_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_RAW_FRAMES_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_RAW_FRAMES */
 
 #ifdef IPECAMERA_DEBUG_BROKEN_FRAMES
-# define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
-# define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
 #else /* IPECAMERA_DEBUG_BROKEN_FRAMES */
 # define IPECAMERA_DEBUG_BROKEN_FRAMES_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_BROKEN_FRAMES_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_BROKEN_FRAMES */
 
 #ifdef IPECAMERA_DEBUG_RAW_PACKETS
-# define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
-# define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
 #else /* IPECAMERA_DEBUG_RAW_PACKETS */
 # define IPECAMERA_DEBUG_RAW_PACKETS_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_RAW_PACKETS_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_RAW_PACKETS */
 
 #ifdef IPECAMERA_DEBUG_HARDWARE
-# define IPECAMERA_DEBUG_HARDWARE_MESSAGE(function, ...) pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__) 
-# define IPECAMERA_DEBUG_HARDWARE_BUFFER(function, ...) pcilib_debug_data_buffer (#function, __VA_ARGS__) 
+# define IPECAMERA_DEBUG_HARDWARE_MESSAGE(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_HARDWARE_BUFFER(function, ...) if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
 #else /* IPECAMERA_DEBUG_HARDWARE */
 # define IPECAMERA_DEBUG_HARDWARE_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_HARDWARE_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_HARDWARE */
+
+#ifdef IPECAMERA_DEBUG_FRAME_HEADERS
+# define IPECAMERA_DEBUG_FRAME_HEADERS_MESSAGE(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_FRAME_HEADERS_BUFFER(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
+#else /* IPECAMERA_DEBUG_RAW_FRAMES */
+# define IPECAMERA_DEBUG_FRAME_HEADERS_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_FRAME_HEADERS_BUFFER(function, ...)
+#endif /* IPECAMERA_DEBUG_RAW_FRAMES */
 
 
 #define ipecamera_debug(function, ...) \
@@ -98,6 +117,18 @@
 
 
 typedef uint32_t ipecamera_payload_t;
+
+typedef enum {
+    IPECAMERA_FIRMWARE_UNKNOWN = 0,
+    IPECAMERA_FIRMWARE_UFO5 = 5,
+    IPECAMERA_FIRMWARE_CMOSIS20 = 6
+} ipecamera_firmware_t;
+
+typedef enum {
+    IPECAMERA_FORMAT_CMOSIS = 5,
+    IPECAMERA_FORMAT_CMOSIS20 = 6,
+    IPECAMERA_FORMAT_POLARIS = 7
+} ipecamera_format_t;
 
 typedef struct {
     pcilib_event_id_t evid;
@@ -146,9 +177,9 @@ struct ipecamera_s {
     pcilib_register_t max_frames_reg;
     pcilib_register_t num_frames_reg;
 
-    int started;		/**< Camera is in grabbing mode (start function is called) */
-    int streaming;		/**< Camera is in streaming mode (we are within stream call) */
-    int parse_data;		/**< Indicates if some processing of the data is required, otherwise only rawdata_callback will be called */
+    int started;			/**< Camera is in grabbing mode (start function is called) */
+    int streaming;			/**< Camera is in streaming mode (we are within stream call) */
+    int parse_data;			/**< Indicates if some processing of the data is required, otherwise only rawdata_callback will be called */
 
     volatile int run_reader;		/**< Instructs the reader thread to stop processing */
     volatile int run_streamer;		/**< Indicates request to stop streaming events and can be set by reader_thread upon exit or by user request */
@@ -159,19 +190,19 @@ struct ipecamera_s {
     struct timeval autostop_time;
     struct timeval next_trigger;	/**< The minimal delay between trigger signals is mandatory, this indicates time when next trigger is possible */
 
-    size_t buffer_size;		/**< How many images to store */
-    size_t buffer_pos;		/**< Current image offset in the buffer, due to synchronization reasons should not be used outside of reader_thread */
-    size_t cur_size;		/**< Already written part of data in bytes */
-    size_t raw_size;		/**< Expected maximum size of raw data in bytes */
-    size_t padded_size;		/**< Expected maximum size of buffer for raw data, including additional padding */
-    size_t roi_raw_size;	/**< Expected size (for currently configured ROI) of raw data in bytes */
-    size_t roi_padded_size;	/**< Expected size (for currently configured ROI) of buffer for raw data, including additional padding */
+    size_t buffer_size;			/**< How many images to store */
+    size_t buffer_pos;			/**< Current image offset in the buffer, due to synchronization reasons should not be used outside of reader_thread */
+    size_t cur_size;			/**< Already written part of data in bytes */
+    size_t raw_size;			/**< Expected maximum size of raw data in bytes */
+    size_t padded_size;			/**< Expected maximum size of buffer for raw data, including additional padding */
+    size_t roi_raw_size;		/**< Expected size (for currently configured ROI) of raw data in bytes */
+    size_t roi_padded_size;		/**< Expected size (for currently configured ROI) of buffer for raw data, including additional padding */
     
-    size_t image_size;		/**< Size of a single image in bytes */
+    size_t image_size;			/**< Size of a single image in bytes */
     
-    size_t max_frames;		/**< Maximal number of frames what may be buffered in camera DDR memory */
-    int firmware;		/**< Firmware version */
-    int cmosis_outputs;		/**< Number of active cmosis outputs: 4 or 16 */
+    size_t max_frames;			/**< Maximal number of frames what may be buffered in camera DDR memory */
+    ipecamera_firmware_t firmware;	/**< Firmware type */
+    int cmosis_outputs;			/**< Number of active cmosis outputs: 4 or 16 */
     int width, height;
 
     

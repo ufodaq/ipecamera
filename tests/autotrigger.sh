@@ -17,9 +17,9 @@ echo "Starting the grabber"
 pci -g -o /dev/null --run-time 12000000 --verbose 10 &
 pid=$!
 
-usleep 100000
+sleep 0.1
 pci -w 9040 80004a01
-usleep 10000000
+sleep 10
 pci -w 9040 80000201
 
 echo "Waiting grabber to finish"

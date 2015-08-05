@@ -288,6 +288,8 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
 
+    ipecamera_debug(API, "ipecamera: starting");
+
     ctx->event_id = 0;
     ctx->preproc_id = 0;
     ctx->reported_id = 0;
@@ -503,6 +505,8 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     
     pthread_attr_destroy(&attr);    
 
+    ipecamera_debug(API, "ipecamera: started");
+
     return err;
 }
 
@@ -522,6 +526,8 @@ int ipecamera_stop(pcilib_context_t *vctx, pcilib_event_flags_t flags) {
 	ctx->run_reader = 0;
 	return 0;
     }
+
+    ipecamera_debug(API, "ipecamera: stopping");
 
     if (ctx->started) {
 	ctx->run_reader = 0;
@@ -597,6 +603,8 @@ int ipecamera_stop(pcilib_context_t *vctx, pcilib_event_flags_t flags) {
     ctx->buffer_pos = 0; 
     ctx->started = 0;
 
+    ipecamera_debug(API, "ipecamera: stopped");
+    
     return 0;
 }
 

@@ -189,6 +189,8 @@ int ipecamera_get(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_eve
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
 
+    ipecamera_debug(API, "ipecamera: get (data)");
+
     buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
     if (buf_ptr < 0) return PCILIB_ERROR_OVERWRITTEN;
     
@@ -271,6 +273,8 @@ int ipecamera_return(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_
 	int buf_ptr = (event_id - 1) % ctx->buffer_size;
 	pthread_rwlock_unlock(&ctx->frame[buf_ptr].mutex);
     }
+
+    ipecamera_debug(API, "ipecamera: return (data)");
 
     return 0;
 }

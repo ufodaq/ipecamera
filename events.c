@@ -32,6 +32,8 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
 
+    ipecamera_debug(API, "ipecamera: start streaming");
+
     ctx->streaming = 1;
     ctx->run_streamer = 1;
 
@@ -77,10 +79,11 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
 
     ctx->streaming = 0;
 
+    ipecamera_debug(API, "ipecamera: streaming finished");
+
     if (do_stop) {
 	ipecamera_stop(vctx, PCILIB_EVENT_FLAGS_DEFAULT);
     }
-    
 
     return err;
 }
@@ -103,6 +106,8 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
 	pcilib_error("RAWData only mode is requested");
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
+
+    ipecamera_debug(API, "ipecamera: next_event");
 
 #ifdef IPECAMERA_ANNOUNCE_READY
     if (((!ctx->preproc)&&(ctx->reported_id == ctx->event_id))||((ctx->preproc)&&(ctx->reported_id == ctx->preproc_id))) {
@@ -133,6 +138,7 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
 	}
 	
 	if (ctx->reported_id == ctx->event_id) {
+	    ipecamera_debug(API, "ipecamera: next_event timed out");
 	    return PCILIB_ERROR_TIMEOUT;
 	}
 	
@@ -149,11 +155,15 @@ retry:
 	    memcpy(info, ctx->frame + ((ctx->reported_id-1)%ctx->buffer_size), sizeof(ipecamera_event_info_t));
 	else if (info_size >= sizeof(pcilib_event_info_t))
 	    memcpy(info, ctx->frame + ((ctx->reported_id-1)%ctx->buffer_size), sizeof(pcilib_event_info_t));
-	else
+	else {
+	    ipecamera_debug(API, "ipecamera: next_event returned a error");
 	    return PCILIB_ERROR_INVALID_ARGUMENT;
+	}
     }
 
     if ((ctx->event_id - ctx->reported_id) >= ctx->buffer_size) goto retry;
+
+    ipecamera_debug(API, "ipecamera: next_event returned");
 
     return 0;
 }

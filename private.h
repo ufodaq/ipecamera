@@ -14,6 +14,7 @@
 # define IPECAMERA_DEBUG_RAW_PACKETS		//**< Store all raw packets read from DMA grouped in frames */
 # define IPECAMERA_DEBUG_HARDWARE		//**< Produce various debugging information about ipecamera operation */
 # define IPECAMERA_DEBUG_FRAME_HEADERS		//**< Print frame headers & footers */
+# define IPECAMERA_DEBUG_API			//**< Debug IPECamera API calls */
 #endif /* IPECAMERA_DEBUG */
 
 #define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
@@ -107,6 +108,14 @@
 # define IPECAMERA_DEBUG_FRAME_HEADERS_MESSAGE(function, ...)
 # define IPECAMERA_DEBUG_FRAME_HEADERS_BUFFER(function, ...)
 #endif /* IPECAMERA_DEBUG_RAW_FRAMES */
+
+#ifdef IPECAMERA_DEBUG_API
+# define IPECAMERA_DEBUG_API_MESSAGE(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_message (#function, __FILE__, __LINE__, __VA_ARGS__); }
+# define IPECAMERA_DEBUG_API_BUFFER(function, ...)  if (ipecamera_getenv(function##_ENV, #function)) { pcilib_debug_data_buffer (#function, __VA_ARGS__); }
+#else /* IPECAMERA_DEBUG_API */
+# define IPECAMERA_DEBUG_API_MESSAGE(function, ...)
+# define IPECAMERA_DEBUG_API_BUFFER(function, ...)
+#endif /* IPECAMERA_DEBUG_API */
 
 
 #define ipecamera_debug(function, ...) \

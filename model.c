@@ -14,7 +14,7 @@ enum ipecamera_protocol_s {
 
 
 static const pcilib_register_protocol_api_description_t ipecamera_cmosis_protocol_api =
-    { IPECAMERA_VERSION, NULL, NULL, ipecamera_cmosis_read, ipecamera_cmosis_write };
+    { IPECAMERA_VERSION, ipecamera_cmosis_open, ipecamera_cmosis_close, ipecamera_cmosis_read, ipecamera_cmosis_write };
 
 /*
 static const pcilib_dma_description_t ipecamera_dma =

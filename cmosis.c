@@ -1,5 +1,7 @@
 #define _BSD_SOURCE
 #define _IPECAMERA_MODEL_C
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include <assert.h>
@@ -7,6 +9,8 @@
 #include <pcilib.h>
 #include <pcilib/tools.h>
 #include <pcilib/error.h>
+#include <pcilib/locking.h>
+#include <pcilib/model.h>
 
 #include "cmosis.h"
 #include "private.h"
@@ -25,13 +29,51 @@
 //#define IPECAMERA_RETRY_ERRORS
 #define IPECAMERA_MULTIREAD
 
-int ipecamera_cmosis_read(pcilib_t *ctx, pcilib_register_bank_context_t *bank_ctx, pcilib_register_addr_t addr, pcilib_register_value_t *value) {
+
+typedef struct ipecamera_cmosis_context_s ipecamera_cmosis_context_t;
+
+struct ipecamera_cmosis_context_s {
+    pcilib_register_bank_context_t bank_ctx;	/**< the bank context associated with the software registers */
+    pcilib_lock_t *lock;			/**< the lock to serialize access through GPIO */
+};
+
+void ipecamera_cmosis_close(pcilib_t *ctx, pcilib_register_bank_context_t *reg_bank_ctx) {
+	ipecamera_cmosis_context_t *bank_ctx = (ipecamera_cmosis_context_t*)reg_bank_ctx;
+
+	if (bank_ctx->lock)
+	    pcilib_return_lock(ctx, PCILIB_LOCK_FLAGS_DEFAULT, bank_ctx->lock);
+	free(bank_ctx);
+}
+
+pcilib_register_bank_context_t* ipecamera_cmosis_open(pcilib_t *ctx, pcilib_register_bank_t bank, const char* model, const void *args) {
+	int err;
+	ipecamera_cmosis_context_t *bank_ctx;
+
+	bank_ctx = calloc(1, sizeof(ipecamera_cmosis_context_t));
+	if (!bank_ctx) {
+	    pcilib_error("Memory allocation for bank context has failed");
+	    return NULL;
+	}
+
+	bank_ctx->lock = pcilib_get_lock(ctx, PCILIB_LOCK_FLAGS_DEFAULT, "cmosis");
+	if (!bank_ctx->lock) {
+	    ipecamera_cmosis_close(ctx, (pcilib_register_bank_context_t*)bank_ctx);
+	    pcilib_error("Failed to initialize a lock to protect CMOSIS register bank");
+	    return NULL;
+	}
+
+	return (pcilib_register_bank_context_t*)bank_ctx;
+}
+
+int ipecamera_cmosis_read(pcilib_t *ctx, pcilib_register_bank_context_t *reg_bank_ctx, pcilib_register_addr_t addr, pcilib_register_value_t *value) {
+    int err;
     uint32_t val, tmp[4];
     char *wr, *rd;
     struct timeval start;
     int retries = RETRIES;
-    const pcilib_register_bank_description_t *bank = bank_ctx->bank;
-
+    ipecamera_cmosis_context_t *bank_ctx = (ipecamera_cmosis_context_t*)reg_bank_ctx;
+    const pcilib_register_bank_description_t *bank = reg_bank_ctx->bank;
+    
     assert(addr < 128);
     
     wr =  pcilib_resolve_register_address(ctx, bank->bar, bank->write_addr);
@@ -42,6 +84,12 @@ int ipecamera_cmosis_read(pcilib_t *ctx, pcilib_register_bank_context_t *bank_ct
     }
 
 retry:
+    err = pcilib_lock(bank_ctx->lock);
+    if (err) {
+	pcilib_error("Error (%i) obtaining a lock to serialize access to CMOSIS registers ", err);
+	return err;
+    }
+
     val = (addr << 8);
 
     ipecamera_datacpy(wr, &val, bank);
@@ -71,15 +119,18 @@ retry:
     }
 #endif /* IPECAMERA_MULTIREAD */
 
+    pcilib_unlock(bank_ctx->lock);
+
     if ((val & READ_READY_BIT) == 0) {
 	if (--retries > 0) {
 	    pcilib_warning("Timeout reading register value (CMOSIS %lu, status: %lx), retrying (try %i of %i)...", addr, val, RETRIES - retries, RETRIES);
 	    goto retry;
 	}
+
 	pcilib_error("Timeout reading register value (CMOSIS %lu, status: %lx)", addr, val);
 	return PCILIB_ERROR_TIMEOUT;
     }
-    
+
     if (val & READ_ERROR_BIT) {
 #ifdef IPECAMERA_RETRY_ERRORS
 	if (--retries > 0) {
@@ -109,12 +160,14 @@ retry:
     return 0;
 }
 
-int ipecamera_cmosis_write(pcilib_t *ctx, pcilib_register_bank_context_t *bank_ctx, pcilib_register_addr_t addr, pcilib_register_value_t value) {
+int ipecamera_cmosis_write(pcilib_t *ctx, pcilib_register_bank_context_t *reg_bank_ctx, pcilib_register_addr_t addr, pcilib_register_value_t value) {
+    int err;
     uint32_t val, tmp[4];
     char *wr, *rd;
     struct timeval start;
     int retries = RETRIES;
-    const pcilib_register_bank_description_t *bank = bank_ctx->bank;
+    ipecamera_cmosis_context_t *bank_ctx = (ipecamera_cmosis_context_t*)reg_bank_ctx;
+    const pcilib_register_bank_description_t *bank = reg_bank_ctx->bank;
 
     assert(addr < 128);
     assert(value < 256);
@@ -127,6 +180,12 @@ int ipecamera_cmosis_write(pcilib_t *ctx, pcilib_register_bank_context_t *bank_c
     }
 
 retry:
+    err = pcilib_lock(bank_ctx->lock);
+    if (err) {
+	pcilib_error("Error (%i) obtaining a lock to serialize access to CMOSIS registers ", err);
+	return err;
+    }
+
     val = WRITE_BIT|(addr << 8)|(value&0xFF);
     ipecamera_datacpy(wr, &val, bank);
 
@@ -153,6 +212,8 @@ retry:
 	ipecamera_datacpy(&val, rd, bank);
     }
 #endif /* IPECAMERA_MULTIREAD */
+
+    pcilib_unlock(bank_ctx->lock);
 
     if ((val & READ_READY_BIT) == 0) {
 #ifdef IPECAMERA_RETRY_ERRORS
@@ -186,7 +247,7 @@ retry:
 	pcilib_error("Address verification failed during register write (CMOSIS %lu, value: %lu, status: %lx)", addr, value, val);
 	return PCILIB_ERROR_VERIFY;
     }
-    
+
     if ((val&0xFF) != value) {
 	pcilib_error("Value verification failed during register read (CMOSIS %lu, value: %lu != %lu)", addr, val/*&ipecamera_bit_mask[bits]*/, value);
 	return PCILIB_ERROR_VERIFY;

@@ -19,6 +19,7 @@
 
 #define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
+#define IPECAMERA_BUG_REPEATING_DATA		//**< 16 bytes repeated at frame offset 4096, the problem start/stop happenning on board restart */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 //#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
 //#define IPECAMERA_CLEAN_ON_START		//**< Read all the data from DMA before starting of recording */

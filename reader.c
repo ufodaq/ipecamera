@@ -234,8 +234,18 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 	    return -PCILIB_ERROR_TOOBIG;
 	}
 
-	if (bufsize)
+	if (bufsize) {
+#ifdef IPECAMERA_BUG_REPEATING_DATA
+	    if ((bufsize > 16)&&(ctx->cur_size > 16)) {
+		if (!memcmp(ctx->buffer + ctx->buffer_pos * ctx->padded_size +  ctx->cur_size - 16, buf, 16)) {
+		    pcilib_warning("Skipping repeating bytes at offset %zu of frame %zu", ctx->cur_size, ctx->event_id);
+		    buf += 16;
+		    bufsize -=16;
+		}
+	    }
+#endif /* IPECAMERA_BUG_REPEATING_DATA */
 	    memcpy(ctx->buffer + ctx->buffer_pos * ctx->padded_size +  ctx->cur_size, buf, bufsize);
+	}
     }
 
     ctx->cur_size += bufsize;

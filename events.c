@@ -19,6 +19,20 @@
 #include "private.h"
 #include "events.h"
 
+#define LOCK(lock_name) \
+    err = pcilib_lock(ctx->lock_name##_lock); \
+    if (err) { \
+	pcilib_error("IPECamera is busy"); \
+	return PCILIB_ERROR_BUSY; \
+    } \
+    ctx->lock_name##_locked = 1;
+
+#define UNLOCK(lock_name) \
+    if (ctx->lock_name##_locked) { \
+	pcilib_unlock(ctx->lock_name##_lock); \
+	ctx->lock_name##_locked = 0; \
+    }
+
 int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, void *user) {
     int run_flag = 1;
     int res, err = 0;
@@ -33,6 +47,8 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
     }
 
     ipecamera_debug(API, "ipecamera: start streaming");
+
+    LOCK(stream);
 
     ctx->streaming = 1;
     ctx->run_streamer = 1;
@@ -79,6 +95,8 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
 
     ctx->streaming = 0;
 
+    UNLOCK(stream);
+
     ipecamera_debug(API, "ipecamera: streaming finished");
 
     if (do_stop) {
@@ -89,6 +107,7 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
 }
 
 int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcilib_event_id_t *evid, size_t info_size, pcilib_event_info_t *info) {
+    int err;
     struct timeval tv;
     ipecamera_t *ctx = (ipecamera_t*)vctx;
 
@@ -108,6 +127,8 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
     }
 
     ipecamera_debug(API, "ipecamera: next_event");
+
+    LOCK(stream);
 
 #ifdef IPECAMERA_ANNOUNCE_READY
     if (((!ctx->preproc)&&(ctx->reported_id == ctx->event_id))||((ctx->preproc)&&(ctx->reported_id == ctx->preproc_id))) {
@@ -138,6 +159,7 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
 	}
 	
 	if (ctx->reported_id == ctx->event_id) {
+	    UNLOCK(stream);
 	    ipecamera_debug(API, "ipecamera: next_event timed out");
 	    return PCILIB_ERROR_TIMEOUT;
 	}
@@ -156,12 +178,15 @@ retry:
 	else if (info_size >= sizeof(pcilib_event_info_t))
 	    memcpy(info, ctx->frame + ((ctx->reported_id-1)%ctx->buffer_size), sizeof(pcilib_event_info_t));
 	else {
+	    UNLOCK(stream);
 	    ipecamera_debug(API, "ipecamera: next_event returned a error");
 	    return PCILIB_ERROR_INVALID_ARGUMENT;
 	}
     }
 
     if ((ctx->event_id - ctx->reported_id) >= ctx->buffer_size) goto retry;
+
+    UNLOCK(stream);
 
     ipecamera_debug(API, "ipecamera: next_event returned");
 

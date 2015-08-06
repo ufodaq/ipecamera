@@ -75,6 +75,19 @@
 	err = PCILIB_ERROR_INVALID_DATA; \
     }
 
+#define LOCK(lock_name) \
+    err = pcilib_try_lock(ctx->lock_name##_lock); \
+    if (err) { \
+	pcilib_error("IPECamera is busy"); \
+	return PCILIB_ERROR_BUSY; \
+    } \
+    ctx->lock_name##_locked = 1;
+
+#define UNLOCK(lock_name) \
+    if (ctx->lock_name##_locked) { \
+	pcilib_unlock(ctx->lock_name##_lock); \
+	ctx->lock_name##_locked = 0; \
+    }
 
 pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
     int err = 0; 
@@ -87,6 +100,16 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	pcilib_register_value_t value;
 	
 	memset(ctx, 0, sizeof(ipecamera_t));
+
+	ctx->run_lock = pcilib_get_lock(pcilib, PCILIB_LOCK_FLAGS_DEFAULT, "ipecamera");
+	ctx->stream_lock = pcilib_get_lock(pcilib, PCILIB_LOCK_FLAGS_DEFAULT, "ipecamera/stream");
+	ctx->trigger_lock = pcilib_get_lock(pcilib, PCILIB_LOCK_FLAGS_DEFAULT, "ipecamera/trigger");
+
+	if (!ctx->run_lock||!ctx->stream_lock||!ctx->trigger_lock) {
+	    free(ctx);
+	    pcilib_error("Failed to initialize locks to protect ipecamera operation");
+	    return NULL;
+	}
 
 	ctx->buffer_size = IPECAMERA_DEFAULT_BUFFER_SIZE;
 
@@ -152,6 +175,16 @@ void ipecamera_free(pcilib_context_t *vctx) {
     if (vctx) {
 	ipecamera_t *ctx = (ipecamera_t*)vctx;
 	ipecamera_stop(vctx, PCILIB_EVENT_FLAGS_DEFAULT);
+
+	if (ctx->trigger_lock)
+	    pcilib_return_lock(vctx->pcilib, PCILIB_LOCK_FLAGS_DEFAULT, ctx->trigger_lock);
+
+	if (ctx->stream_lock)
+	    pcilib_return_lock(vctx->pcilib, PCILIB_LOCK_FLAGS_DEFAULT, ctx->stream_lock);
+	
+	if (ctx->run_lock)
+	    pcilib_return_lock(vctx->pcilib, PCILIB_LOCK_FLAGS_DEFAULT, ctx->run_lock);
+
 	free(ctx);
     }
 }
@@ -210,40 +243,54 @@ int ipecamera_reset(pcilib_context_t *vctx) {
     control = ctx->control_reg;
     status = ctx->status_reg;
 
-	// Set Reset bit to CMOSIS
-    err = pcilib_write_register_by_id(pcilib, control, 0x1e4);
-    if (err) {
-	pcilib_error("Error setting FPGA reset bit");
-	return err;
-    }
-    usleep(IPECAMERA_CMOSIS_RESET_DELAY);
+    LOCK(run);
+
+    ipecamera_debug(API, "ipecamera: starting");
+
+    if (ctx->firmware == IPECAMERA_FIRMWARE_UFO5) {
+	    // Set Reset bit to CMOSIS
+	err = pcilib_write_register_by_id(pcilib, control, 0x1e4);
+	if (err) {
+	    UNLOCK(run);
+	    pcilib_error("Error setting FPGA reset bit");
+	    return err;
+	}
+	usleep(IPECAMERA_CMOSIS_RESET_DELAY);
 
 	// Remove Reset bit to CMOSIS
-    err = pcilib_write_register_by_id(pcilib, control, 0x1e1);
-    if (err) {
-	pcilib_error("Error reseting FPGA reset bit");
-	return err;
-    }
-    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
+	err = pcilib_write_register_by_id(pcilib, control, 0x1e1);
+	if (err) {
+	    UNLOCK(run);
+	    pcilib_error("Error reseting FPGA reset bit");
+	    return err;
+	}
+	usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
 	// Special settings for CMOSIS v.2
-    value = 01; err = pcilib_write_register_space(pcilib, "cmosis", 115, 1, &value);
-    if (err) {
-	pcilib_error("Error setting CMOSIS configuration");
-	return err;
-    }
-    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
+	value = 01; err = pcilib_write_register_space(pcilib, "cmosis", 115, 1, &value);
+	if (err) {
+	    UNLOCK(run);
+	    pcilib_error("Error setting CMOSIS configuration");
+	    return err;
+	}
+	usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
-    value = 07; err = pcilib_write_register_space(pcilib, "cmosis", 82, 1, &value);
-    if (err) {
-	pcilib_error("Error setting CMOSIS configuration");
-	return err;
+	value = 07; err = pcilib_write_register_space(pcilib, "cmosis", 82, 1, &value);
+	if (err) {
+	    UNLOCK(run);
+	    pcilib_error("Error setting CMOSIS configuration");
+	    return err;
+	}
+	usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
+	pcilib_warning("Reset procedure is not complete");
+    } else {
+	pcilib_warning("Reset procedure is not implemented");
     }
-    usleep(IPECAMERA_CMOSIS_REGISTER_DELAY);
 
 	// Set default parameters
     err = pcilib_write_register_by_id(pcilib, control, IPECAMERA_IDLE);
     if (err) {
+	UNLOCK(run);
 	pcilib_error("Error bringing FPGA in default mode");
 	return err;
     }
@@ -255,13 +302,18 @@ int ipecamera_reset(pcilib_context_t *vctx) {
     if (err) {
 	err = pcilib_read_register_by_id(pcilib, status, &value);
 
+	UNLOCK(run);
 	if (err) pcilib_error("Error reading status register");
 	else pcilib_error("Camera returns unexpected status (status: %lx)", value);
 
 	return PCILIB_ERROR_VERIFY;
     }
 
-    return pcilib_skip_dma(vctx->pcilib, ctx->rdma);
+    err = pcilib_skip_dma(vctx->pcilib, ctx->rdma);
+    UNLOCK(run);
+
+    ipecamera_debug(API, "ipecamera: reset done");
+    return err;
 }
 
 
@@ -288,6 +340,8 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
 
+    LOCK(run);
+
     ipecamera_debug(API, "ipecamera: starting");
 
     ctx->event_id = 0;
@@ -308,6 +362,7 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	ctx->cmosis_outputs = CMOSIS20_MAX_CHANNELS;
 	break;
      default:
+	UNLOCK(run);
 	pcilib_error("Can't start undefined version (%lu) of IPECamera", ctx->firmware);
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
@@ -322,6 +377,7 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	    ctx->cmosis_outputs = 4;
 	    break;
 	 default:
+	    UNLOCK(run);
 	    pcilib_error("IPECamera reporting invalid output_mode 0x%lx", value);
 	    return PCILIB_ERROR_INVALID_STATE;
 	}
@@ -604,7 +660,8 @@ int ipecamera_stop(pcilib_context_t *vctx, pcilib_event_flags_t flags) {
     ctx->started = 0;
 
     ipecamera_debug(API, "ipecamera: stopped");
-    
+    UNLOCK(run);
+
     return 0;
 }
 
@@ -622,6 +679,9 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 	pcilib_error("IPECamera imaging is not initialized");
 	return PCILIB_ERROR_NOTINITIALIZED;
     }
+
+    ipecamera_debug(API, "ipecamera: trigger");
+    LOCK(trigger);
 
     pcilib_sleep_until_deadline(&ctx->next_trigger);
 /*
@@ -645,9 +705,13 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 		GET_REG(status2_reg, value);
 	    } while ((value&0x40000000)&&(pcilib_calc_time_to_deadline(&deadline) > 0));
 	}
-	if (value&0x40000000)
+	if (value&0x40000000) {
 #endif /* IPECAMERA_TRIGGER_WAIT_IDLE */
+	    UNLOCK(trigger);
 	    return PCILIB_ERROR_BUSY;
+#ifdef IPECAMERA_TRIGGER_TIMEOUT
+	}
+#endif /* IPECAMERA_TRIGGER_WAIT_IDLE */
     }
 
     GET_REG(control_reg, value);
@@ -657,6 +721,8 @@ int ipecamera_trigger(pcilib_context_t *vctx, pcilib_event_t event, size_t trigg
 
 	// DS: We need to compute it differently, on top of that add exposure time and the time FPGA takes to read frame from CMOSIS
     pcilib_calc_deadline(&ctx->next_trigger, IPECAMERA_NEXT_FRAME_DELAY);
+    
+    UNLOCK(trigger);
 
     return 0;
 }

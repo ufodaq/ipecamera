@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <pcilib/model.h>
 #include <pcilib/debug.h>
+#include <pcilib/locking.h>
 #include "ipecamera.h"
 #include "env.h"
 
@@ -162,6 +163,13 @@ typedef struct {
 struct ipecamera_s {
     pcilib_context_t event;
     UfoDecoder *ipedec;
+
+    pcilib_lock_t *run_lock;		/**< Lock protecting global camera operation */
+    pcilib_lock_t *stream_lock;		/**< Lock protecting stream/next_frame operations */
+    pcilib_lock_t *trigger_lock;	/**< Lock protecting stream/next_frame operations */
+    int run_locked;			/**< Flag indicating if camera is currently locked */
+    int stream_locked;			/**< Flag indicating if camera is currently locked */
+    int trigger_locked;			/**< Flag indicating if camera is currently locked */
 
     char *data;
     ipecamera_pixel_t *image;

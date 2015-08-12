@@ -351,6 +351,10 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
     ctx->parse_data = (flags&PCILIB_EVENT_FLAG_RAW_DATA_ONLY)?0:1;
     ctx->cur_size = 0;
 
+#ifdef IPECAMERA_BUG_MULTIFRAME_HEADERS
+    ctx->saved_header_size = 0;
+#endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
+
     switch (ctx->firmware) {
      case IPECAMERA_FIRMWARE_UFO5:
 	ctx->dim.width = CMOSIS_WIDTH;

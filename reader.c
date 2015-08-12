@@ -163,13 +163,30 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     ipecamera_debug_buffer(RAW_PACKETS, bufsize, buf, PCILIB_DEBUG_BUFFER_MKDIR, "frame%4lu/frame%9lu", ctx->event_id, packet_id);
 
     if (!ctx->cur_size) {
+#ifdef IPECAMERA_BUG_MULTIFRAME_HEADERS
+	if (ctx->saved_header_size) {
+	    void *buf2 = alloca(ctx->saved_header_size + bufsize);
+	    if (!buf2) {
+		pcilib_error("Error allocating %zu bytes of memory in stack", ctx->saved_header_size + bufsize);
+		return -PCILIB_ERROR_MEMORY;
+	    }
+	    memcpy(buf2, ctx->saved_header, ctx->saved_header_size);
+	    memcpy(buf2 + ctx->saved_header_size, buf, bufsize);
+
+	    buf = buf2;
+	    bufsize += ctx->saved_header_size;
+
+	    ctx->saved_header_size = 0;
+	}
+#endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
+
 #if defined(IPECAMERA_BUG_INCOMPLETE_PACKETS)||defined(IPECAMERA_BUG_MULTIFRAME_PACKETS)
 	size_t startpos;
-	for (startpos = 0; (startpos + CMOSIS_FRAME_HEADER_SIZE) <= bufsize; startpos += sizeof(ipecamera_payload_t)) {
+	for (startpos = 0; (startpos + CMOSIS_ENTITY_SIZE) <= bufsize; startpos += sizeof(ipecamera_payload_t)) {
 	    if (!CHECK_FRAME_MAGIC(buf + startpos)) break;
 	}
 	
-	if ((startpos + CMOSIS_FRAME_HEADER_SIZE) > bufsize) {
+	if ((startpos +  CMOSIS_ENTITY_SIZE) > bufsize) {
 	    ipecamera_debug_buffer(RAW_PACKETS, bufsize, NULL, 0, "frame%4lu/frame%9lu.invalid", ctx->event_id, packet_id);
 	    
 	    if (invalid_frame_id != ctx->event_id) {
@@ -200,8 +217,15 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 		// We should handle the case when multi-header is split between multiple DMA packets
 	    if (!ipecamera_parse_header(ctx, buf, bufsize))
 		return PCILIB_STREAMING_CONTINUE;
+
+#ifdef IPECAMERA_BUG_MULTIFRAME_HEADERS
+	} else if ((bufsize >= CMOSIS_ENTITY_SIZE)&&(!CHECK_FRAME_MAGIC(buf))) {
+	    memcpy(ctx->saved_header, buf, bufsize);
+	    ctx->saved_header_size = bufsize;
+	    return PCILIB_STREAMING_REQ_FRAGMENT;
+#endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
 	} else {
-	    ipecamera_debug(HARDWARE, "Frame magic is not found, ignoring broken data...");
+	    ipecamera_debug(HARDWARE, "Frame magic is not found in the remaining DMA packet consisting of %u bytes, ignoring broken data...", bufsize);
 	    return PCILIB_STREAMING_CONTINUE;
 	}
     }
@@ -213,11 +237,11 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
     if (ctx->cur_size + bufsize > ctx->roi_raw_size) {
         size_t need;
 	
-	for (need = ctx->roi_raw_size - ctx->cur_size; (need + CMOSIS_FRAME_HEADER_SIZE) <= bufsize; need += sizeof(uint32_t)) {
+	for (need = ctx->roi_raw_size - ctx->cur_size; (need + CMOSIS_ENTITY_SIZE) <= bufsize; need += sizeof(uint32_t)) {
 	    if (!CHECK_FRAME_MAGIC(buf + need)) break;
 	}
 	
-	if ((need + CMOSIS_FRAME_HEADER_SIZE) <= bufsize) {
+	if ((need + CMOSIS_ENTITY_SIZE) <= bufsize) {
 	    extra_data = bufsize - need;
 	    eof = 1;
 	}

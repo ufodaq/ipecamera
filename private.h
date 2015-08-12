@@ -20,6 +20,7 @@
 
 #define IPECAMERA_BUG_MISSING_PAYLOAD		//**< CMOSIS fails to provide a first payload for each frame, therefore the frame is 32 bit shorter */
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
+#define IPECAMERA_BUG_MULTIFRAME_HEADERS	//**< UFO Camera operates with 32-byte entities, but some times there is 16-byte padding before the data which may result in spliting the header between 2 DMA packets. We still need to define a minimal number of bytes which are always in the same DMA packet (CMOSIS_ENTITY_SIZE) */
 #define IPECAMERA_BUG_REPEATING_DATA		//**< 16 bytes repeated at frame offset 4096, the problem start/stop happenning on board restart */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 //#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
@@ -46,8 +47,13 @@
 #define IPECAMERA_END_OF_SEQUENCE 0x1F001001
 
 
-#define CMOSIS_FRAME_HEADER_SIZE	8 * sizeof(ipecamera_payload_t)
-#define CMOSIS_FRAME_TAIL_SIZE		8 * sizeof(ipecamera_payload_t)
+#define CMOSIS_FRAME_HEADER_SIZE	(8 * sizeof(ipecamera_payload_t))
+#define CMOSIS_FRAME_TAIL_SIZE		(8 * sizeof(ipecamera_payload_t))
+#ifdef IPECAMERA_BUG_MULTIFRAME_HEADERS
+# define CMOSIS_ENTITY_SIZE		(4 * sizeof(ipecamera_payload_t))		//**< This normaly should be equal to 32 bytes like header and tail, but in fact is only 16 bytes */
+#else /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
+# define CMOSIS_ENTITY_SIZE		(8 * sizeof(ipecamera_payload_t))		//**< This normaly should be equal to 32 bytes like header and tail, but in fact is only 16 bytes */
+#endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
 
 #define CMOSIS_MAX_CHANNELS 16
 #define CMOSIS_PIXELS_PER_CHANNEL 128
@@ -228,7 +234,11 @@ struct ipecamera_s {
     void *buffer;
     ipecamera_change_mask_t *cmask;
     ipecamera_frame_t *frame;
-    
+
+#ifdef IPECAMERA_BUG_MULTIFRAME_HEADERS
+    size_t saved_header_size;				/**< If it happened that the frame header is split between 2 DMA packets, this variable holds the size of the part containing in the first packet */
+    char saved_header[CMOSIS_FRAME_HEADER_SIZE];	/**< If it happened that the frame header is split between 2 DMA packets, this variable holds the part containing in the first packet */
+#endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
 
     ipecamera_image_dimensions_t dim;
 

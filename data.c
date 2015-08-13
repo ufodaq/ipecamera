@@ -58,6 +58,7 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
 
     res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->frame[buf_ptr].event.raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
     if (!res) {
+	pcilib_warning("Decoding of frame %u has failed, ufodecode returns error %i", ctx->event_id, res);
 	ipecamera_debug_buffer(BROKEN_FRAMES, ctx->frame[buf_ptr].event.raw_size, ctx->buffer + buf_ptr * ctx->padded_size, PCILIB_DEBUG_BUFFER_MKDIR, "broken_frame.%4lu", ctx->event_id);
         err = PCILIB_ERROR_FAILED;
         ctx->frame[buf_ptr].event.image_broken = err;
@@ -192,8 +193,11 @@ int ipecamera_get(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_eve
     ipecamera_debug(API, "ipecamera: get (data)");
 
     buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
-    if (buf_ptr < 0) return PCILIB_ERROR_OVERWRITTEN;
-    
+    if (buf_ptr < 0) {
+	pcilib_warning("The data of requested frame %zu was overwritten", event_id);
+	return PCILIB_ERROR_OVERWRITTEN;
+    }
+
     switch ((ipecamera_data_type_t)data_type) {
 	case IPECAMERA_RAW_DATA:
 	    raw_size = ctx->frame[buf_ptr].event.raw_size;

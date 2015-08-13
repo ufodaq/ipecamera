@@ -95,7 +95,7 @@ static int ipecamera_get_next_buffer_to_process(ipecamera_t *ctx, pcilib_event_i
     if ((ctx->event_id - ctx->preproc_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) {
 	size_t preproc_id = ctx->preproc_id;
 	ctx->preproc_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS - 1);
-	ipecamera_debug(HARDWARE, "Skipping events %zu to %zu as decoding is not fast enough. We are currently %zu buffers beyond, but only %zu buffers are available and safety limit is %zu",
+	ipecamera_debug(HARDWARE, "Skipping preprocessing of events %zu to %zu as decoding is not fast enough. We are currently %zu buffers beyond, but only %zu buffers are available and safety limit is %zu",
 	    preproc_id, ctx->preproc_id - 1, ctx->event_id - ctx->preproc_id, ctx->buffer_size, IPECAMERA_RESERVE_BUFFERS);
     }
 

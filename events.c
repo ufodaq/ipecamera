@@ -71,8 +71,11 @@ int ipecamera_stream(pcilib_context_t *vctx, pcilib_event_callback_t callback, v
 #else /* IPECAMERA_ANNOUNCE_READY */
 	    while (ctx->reported_id != ctx->event_id) {
 #endif /* IPECAMERA_ANNOUNCE_READY */
-		if ((ctx->event_id - ctx->reported_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) ctx->reported_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS);
-		else ++ctx->reported_id;
+		if ((ctx->event_id - ctx->reported_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) {
+		    ipecamera_debug(HARDWARE, "Skipping events %zu to %zu as preprocessing is too slow. We are currently %zu buffers beyond, but only %zu buffers are available and safety limit is %zu",
+			ctx->reported_id, ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS), ctx->event_id - ctx->reported_id, ctx->buffer_size, IPECAMERA_RESERVE_BUFFERS);
+		    ctx->reported_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS);
+		} else ++ctx->reported_id;
 
 		memcpy(&info, ctx->frame + ((ctx->reported_id-1)%ctx->buffer_size), sizeof(ipecamera_event_info_t));
 
@@ -167,8 +170,11 @@ int ipecamera_next_event(pcilib_context_t *vctx, pcilib_timeout_t timeout, pcili
     }
 
 retry:
-    if ((ctx->event_id - ctx->reported_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) ctx->reported_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS);
-    else ++ctx->reported_id;
+    if ((ctx->event_id - ctx->reported_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) {
+	ipecamera_debug(HARDWARE, "Skipping events %zu to %zu as preprocessing is too slow. We are currently %zu buffers beyond, but only %zu buffers are available and safety limit is %zu",
+	    ctx->reported_id, ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS), ctx->event_id - ctx->reported_id, ctx->buffer_size, IPECAMERA_RESERVE_BUFFERS);
+	ctx->reported_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS);
+    } else ++ctx->reported_id;
 
     if (evid) *evid = ctx->reported_id;
 

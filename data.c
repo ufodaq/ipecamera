@@ -40,7 +40,7 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
     uint16_t *pixels;
     
     int buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
-    if (buf_ptr < 0) return PCILIB_ERROR_TIMEOUT;
+    if (buf_ptr < 0) return PCILIB_ERROR_OVERWRITTEN;
     
     if (ctx->frame[buf_ptr].event.image_ready) return 0;
     
@@ -58,9 +58,9 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
 
     res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->frame[buf_ptr].event.raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
     if (!res) {
-	pcilib_warning("Decoding of frame %u has failed, ufodecode returns error %i", ctx->event_id, res);
+	ipecamera_debug(HARDWARE, "Decoding of frame %u has failed, ufodecode returns error %i", ctx->event_id, res);
 	ipecamera_debug_buffer(BROKEN_FRAMES, ctx->frame[buf_ptr].event.raw_size, ctx->buffer + buf_ptr * ctx->padded_size, PCILIB_DEBUG_BUFFER_MKDIR, "broken_frame.%4lu", ctx->event_id);
-        err = PCILIB_ERROR_FAILED;
+        err = PCILIB_ERROR_INVALID_DATA;
         ctx->frame[buf_ptr].event.image_broken = err;
 	goto ready;
     }
@@ -72,9 +72,9 @@ ready:
 
     if (ipecamera_resolve_event_id(ctx, event_id) < 0) {
 	ctx->frame[buf_ptr].event.image_ready = 0;
-	return PCILIB_ERROR_TIMEOUT;
+	return PCILIB_ERROR_OVERWRITTEN;
     }
-    
+
     return err;
 }
 
@@ -92,12 +92,18 @@ static int ipecamera_get_next_buffer_to_process(ipecamera_t *ctx, pcilib_event_i
 	return -1;
     }
 
-    if ((ctx->event_id - ctx->preproc_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) ctx->preproc_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS - 1);
+    if ((ctx->event_id - ctx->preproc_id) > (ctx->buffer_size - IPECAMERA_RESERVE_BUFFERS)) {
+	size_t preproc_id = ctx->preproc_id;
+	ctx->preproc_id = ctx->event_id - (ctx->buffer_size - 1 - IPECAMERA_RESERVE_BUFFERS - 1);
+	ipecamera_debug(HARDWARE, "Skipping events %zu to %zu as decoding is not fast enough. We are currently %zu buffers beyond, but only %zu buffers are available and safety limit is %zu",
+	    preproc_id, ctx->preproc_id - 1, ctx->event_id - ctx->preproc_id, ctx->buffer_size, IPECAMERA_RESERVE_BUFFERS);
+    }
 
     res = ctx->preproc_id%ctx->buffer_size;
 
     if (pthread_rwlock_trywrlock(&ctx->frame[res].mutex)) {
 	pthread_mutex_unlock(&ctx->preproc_mutex);
+	ipecamera_debug(HARDWARE, "Can't lock buffer %i", res);
 	return -1;
     }
     
@@ -111,6 +117,7 @@ static int ipecamera_get_next_buffer_to_process(ipecamera_t *ctx, pcilib_event_i
 
 
 void *ipecamera_preproc_thread(void *user) {
+    int err;
     int buf_ptr;
     pcilib_event_id_t evid;
     
@@ -124,10 +131,25 @@ void *ipecamera_preproc_thread(void *user) {
 	    continue;
 	}
 	
-	ipecamera_decode_frame(ctx, evid);
+	err = ipecamera_decode_frame(ctx, evid);
 	
 	pthread_rwlock_unlock(&ctx->frame[buf_ptr].mutex);
+
+#ifdef IPECAMERA_DEBUG_HARDWARE
+	if (err) {
+	    switch (err) {
+	     case PCILIB_ERROR_OVERWRITTEN:
+		ipecamera_debug(HARDWARE, "The frame (%zu) was overwritten while preprocessing", evid);
+	     break;
+	     case PCILIB_ERROR_INVALID_DATA:
+		ipecamera_debug(HARDWARE, "The frame (%zu) is corrupted, decoding have failed", evid);
+	     break;
+	     default:
+		ipecamera_debug(HARDWARE, "The frame (%zu) is corrupted, decoding have failed", evid);
+	    }
+	}
     }
+#endif /* IPECAMERA_DEBUG_HARDWARE */
 
     return NULL;
 }
@@ -138,7 +160,7 @@ static int ipecamera_get_frame(ipecamera_t *ctx, pcilib_event_id_t event_id) {
     
     if (ctx->preproc) {	
 	if (ctx->frame[buf_ptr].event.image_broken)
-		return ctx->frame[buf_ptr].event.image_broken;
+	    return ctx->frame[buf_ptr].event.image_broken;
     } else {
 	pthread_rwlock_rdlock(&ctx->frame[buf_ptr].mutex);
 
@@ -151,24 +173,24 @@ static int ipecamera_get_frame(ipecamera_t *ctx, pcilib_event_id_t event_id) {
 	
 	return 0;
     }
-    
-    
+
+
     while (!ctx->frame[buf_ptr].event.image_ready) {
 	usleep(IPECAMERA_NOFRAME_PREPROC_SLEEP);
 
 	buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
 	if (buf_ptr < 0) return PCILIB_ERROR_OVERWRITTEN;
-    }	
+    }
 
     pthread_rwlock_rdlock(&ctx->frame[buf_ptr].mutex);
-    
+
     buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
     if ((buf_ptr < 0)||(!ctx->frame[buf_ptr].event.image_ready)) {
 	pthread_rwlock_unlock(&ctx->frame[buf_ptr].mutex);
 	return PCILIB_ERROR_OVERWRITTEN;
     }
-    
-    return 0;    
+
+    return 0;
 }
 
 
@@ -194,7 +216,7 @@ int ipecamera_get(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_eve
 
     buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
     if (buf_ptr < 0) {
-	pcilib_warning("The data of requested frame %zu was overwritten", event_id);
+	ipecamera_debug(HARDWARE, "The data of the requested frame %zu has been meanwhile overwritten", event_id);
 	return PCILIB_ERROR_OVERWRITTEN;
     }
 
@@ -202,9 +224,15 @@ int ipecamera_get(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_eve
 	case IPECAMERA_RAW_DATA:
 	    raw_size = ctx->frame[buf_ptr].event.raw_size;
 	    if (data) {
-		if ((!size)||(*size < raw_size)) return PCILIB_ERROR_TOOBIG;
+		if ((!size)||(*size < raw_size)) {
+		    pcilib_warning("The raw data associated with frame %zu is too big (%zu bytes) for user supplied buffer (%zu bytes)", event_id, raw_size, (size?*size:0));
+		    return PCILIB_ERROR_TOOBIG;
+		}
 		memcpy(data, ctx->buffer + buf_ptr * ctx->padded_size, raw_size);
-		if (ipecamera_resolve_event_id(ctx, event_id) < 0) return PCILIB_ERROR_OVERWRITTEN;
+		if (ipecamera_resolve_event_id(ctx, event_id) < 0) {
+		    ipecamera_debug(HARDWARE, "The data of requested frame %zu was overwritten while copying", event_id);
+		    return PCILIB_ERROR_OVERWRITTEN;
+		}
 		*size = raw_size;
 		return 0;
 	    }
@@ -213,10 +241,27 @@ int ipecamera_get(pcilib_context_t *vctx, pcilib_event_id_t event_id, pcilib_eve
 	    return 0;
 	case IPECAMERA_IMAGE_DATA:
 	    err = ipecamera_get_frame(ctx, event_id);
-	    if (err) return err;
+	    if (err) {
+#ifdef IPECAMERA_DEBUG_HARDWARE
+		switch (err) {
+	         case PCILIB_ERROR_OVERWRITTEN:
+		    ipecamera_debug(HARDWARE, "The requested frame (%zu) was overwritten", event_id);
+		    break;
+	         case PCILIB_ERROR_INVALID_DATA:
+		    ipecamera_debug(HARDWARE, "The requested frame (%zu) is corrupted", event_id);
+		    break;
+		 default:
+		    ipecamera_debug(HARDWARE, "Error getting the data associated with the requested frame (%zu), error %i", event_id, err);
+		}
+#endif /* IPECAMERA_DEBUG_HARDWARE */
+		return err;
+	    }
 
 	    if (data) {
-		if ((!size)||(*size < ctx->image_size * sizeof(ipecamera_pixel_t))) return PCILIB_ERROR_TOOBIG;
+		if ((!size)||(*size < ctx->image_size * sizeof(ipecamera_pixel_t))) {
+		    pcilib_warning("The image associated with frame %zu is too big (%zu bytes) for user supplied buffer (%zu bytes)", event_id, ctx->image_size * sizeof(ipecamera_pixel_t), (size?*size:0));
+		    return PCILIB_ERROR_TOOBIG;
+		}
 		memcpy(data, ctx->image + buf_ptr * ctx->image_size, ctx->image_size * sizeof(ipecamera_pixel_t));
 		pthread_rwlock_unlock(&ctx->frame[buf_ptr].mutex);
 		*size =  ctx->image_size * sizeof(ipecamera_pixel_t);

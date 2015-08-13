@@ -25,10 +25,11 @@
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 //#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
 //#define IPECAMERA_CLEAN_ON_START		//**< Read all the data from DMA before starting of recording */
-#define IPECAMERA_ADJUST_BUFFER_SIZE		//**< Adjust default buffer size based on the hardware capabilities */
+//#define IPECAMERA_ADJUST_BUFFER_SIZE		//**< Adjust default buffer size based on the hardware capabilities (number of frames stored in the FPGA memory) */
 
-#define IPECAMERA_DEFAULT_BUFFER_SIZE 256  	//**< should be power of 2 */
-#define IPECAMERA_RESERVE_BUFFERS 2		//**< Return Frame is Lost error, if requested frame will be overwritten after specified number of frames
+#define IPECAMERA_DEFAULT_BUFFER_SIZE 256  	//**< number of buffers in a ring buffer, should be power of 2 */
+#define IPECAMERA_DEFAULT_CMOSIS20_BUFFER_SIZE 64 //*< overrides number of buffers for CMOSIS20 sensor to reduce memory consumption */
+#define IPECAMERA_RESERVE_BUFFERS 4		//**< Return Frame is Lost error, if requested frame will be overwritten after specified number of frames
 
 #define IPECAMERA_DMA_TIMEOUT 50000		//**< Default DMA timeout */
 #define IPECAMERA_TRIGGER_TIMEOUT 200000	//**< In trigger call allow specified timeout for camera to get out of busy state. Set 0 to fail immideatly */

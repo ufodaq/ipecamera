@@ -111,9 +111,8 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	    return NULL;
 	}
 
-	ctx->buffer_size = IPECAMERA_DEFAULT_BUFFER_SIZE;
-
 	ctx->dim.bpp = sizeof(ipecamera_pixel_t) * 8;
+	ctx->buffer_size = IPECAMERA_DEFAULT_BUFFER_SIZE;
 
 	FIND_REG(status_reg, "fpga", "status");
 	FIND_REG(control_reg, "fpga", "control");
@@ -136,6 +135,7 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	    break;
 	 case IPECAMERA_FIRMWARE_CMOSIS20:
 	    ctx->firmware = value;
+	    ctx->buffer_size = IPECAMERA_DEFAULT_CMOSIS20_BUFFER_SIZE;
 	    err = pcilib_add_registers(pcilib, 0, cmosis20000_registers);
 	    break;
 	 default:

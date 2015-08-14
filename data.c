@@ -58,13 +58,12 @@ inline static int ipecamera_decode_frame(ipecamera_t *ctx, pcilib_event_id_t eve
 
     res = ufo_decoder_decode_frame(ctx->ipedec, ctx->buffer + buf_ptr * ctx->padded_size, ctx->frame[buf_ptr].event.raw_size, pixels, &ctx->frame[buf_ptr].event.meta);
     if (!res) {
-	ipecamera_debug(HARDWARE, "Decoding of frame %u has failed, ufodecode returns error %i", ctx->event_id, res);
 	ipecamera_debug_buffer(BROKEN_FRAMES, ctx->frame[buf_ptr].event.raw_size, ctx->buffer + buf_ptr * ctx->padded_size, PCILIB_DEBUG_BUFFER_MKDIR, "broken_frame.%4lu", ctx->event_id);
         err = PCILIB_ERROR_INVALID_DATA;
         ctx->frame[buf_ptr].event.image_broken = err;
 	goto ready;
-    }
-	    
+    } 
+
     ctx->frame[buf_ptr].event.image_broken = 0;
 
 ready:
@@ -157,11 +156,8 @@ void *ipecamera_preproc_thread(void *user) {
 static int ipecamera_get_frame(ipecamera_t *ctx, pcilib_event_id_t event_id) {
     int err;
     int buf_ptr = (event_id - 1) % ctx->buffer_size;
-    
-    if (ctx->preproc) {	
-	if (ctx->frame[buf_ptr].event.image_broken)
-	    return ctx->frame[buf_ptr].event.image_broken;
-    } else {
+
+    if (!ctx->preproc) {
 	pthread_rwlock_rdlock(&ctx->frame[buf_ptr].mutex);
 
 	err = ipecamera_decode_frame(ctx, event_id);
@@ -175,12 +171,15 @@ static int ipecamera_get_frame(ipecamera_t *ctx, pcilib_event_id_t event_id) {
     }
 
 
-    while (!ctx->frame[buf_ptr].event.image_ready) {
+    while (!((volatile ipecamera_t*)ctx)->frame[buf_ptr].event.image_ready) {
 	usleep(IPECAMERA_NOFRAME_PREPROC_SLEEP);
 
 	buf_ptr = ipecamera_resolve_event_id(ctx, event_id);
 	if (buf_ptr < 0) return PCILIB_ERROR_OVERWRITTEN;
     }
+
+    if (((volatile ipecamera_t*)ctx)->frame[buf_ptr].event.image_broken)
+	return ctx->frame[buf_ptr].event.image_broken;
 
     pthread_rwlock_rdlock(&ctx->frame[buf_ptr].mutex);
 

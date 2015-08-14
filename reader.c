@@ -21,6 +21,23 @@
 #include "private.h"
 #include "reader.h"
 
+
+#define GET_REG(reg, var) \
+    if (!err) { \
+	err = pcilib_read_register_by_id(pcilib, ctx->reg, &var); \
+	if (err) { \
+	    pcilib_error("Error reading %s register", model_info->registers[ctx->reg].name); \
+	} \
+    }
+
+#define SET_REG(reg, val) \
+    if (!err) { \
+	err = pcilib_write_register_by_id(pcilib, ctx->reg, val); \
+	if (err) { \
+	    pcilib_error("Error writting %s register", model_info->registers[ctx->reg].name); \
+	} \
+    }
+
 //#define CHECK_FRAME_MAGIC(buf) \
 //	memcmp(buf, ((void*)frame_magic) + 1, sizeof(frame_magic) - 1)
 
@@ -304,7 +321,12 @@ static int ipecamera_data_callback(void *user, pcilib_dma_flags_t flags, size_t 
 void *ipecamera_reader_thread(void *user) {
     int err;
     ipecamera_t *ctx = (ipecamera_t*)user;
-    
+#ifdef IPECAMERA_BUG_STUCKED_BUSY
+    pcilib_register_value_t saved, value;
+    pcilib_t *pcilib = ctx->event.pcilib;
+    const pcilib_model_description_t *model_info = pcilib_get_model_description(pcilib);
+#endif /* IPECAMERA_BUG_STUCKED_BUSY */
+
     while (ctx->run_reader) {
 	err = pcilib_stream_dma(ctx->event.pcilib, ctx->rdma, 0, 0, PCILIB_DMA_FLAG_MULTIPACKET, IPECAMERA_DMA_TIMEOUT, &ipecamera_data_callback, user);
 	if (err) {
@@ -317,6 +339,18 @@ void *ipecamera_reader_thread(void *user) {
 		    ctx->run_reader = 0;
 		    break;
 		}
+#ifdef IPECAMERA_BUG_STUCKED_BUSY
+		GET_REG(status2_reg, value);
+		if (value&0x2FFFFFFF) {
+		    pcilib_warning("Camera stuck in busy, trying to recover...");
+		    GET_REG(control_reg, saved);
+		    SET_REG(control_reg, IPECAMERA_IDLE);
+		    while ((value&0x2FFFFFFF)&&(ctx->run_reader)) {
+			usleep(IPECAMERA_NOFRAME_SLEEP);
+		    }
+		    return 0;
+		}
+#endif /* IPECAMERA_BUG_STUCKED_BUSY */
 		usleep(IPECAMERA_NOFRAME_SLEEP);
 	    } else pcilib_error("DMA error while reading IPECamera frames, error: %i", err);
 	} 

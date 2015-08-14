@@ -22,6 +22,7 @@
 #define IPECAMERA_BUG_MULTIFRAME_PACKETS	//**< This is by design, start of packet comes directly after the end of last one in streaming mode */
 #define IPECAMERA_BUG_MULTIFRAME_HEADERS	//**< UFO Camera operates with 32-byte entities, but some times there is 16-byte padding before the data which may result in spliting the header between 2 DMA packets. We still need to define a minimal number of bytes which are always in the same DMA packet (CMOSIS_ENTITY_SIZE) */
 #define IPECAMERA_BUG_REPEATING_DATA		//**< 16 bytes repeated at frame offset 4096, the problem start/stop happenning on board restart */
+//#define IPECAMERA_BUG_STUCKED_BUSY		//**< DMA may stuck in busy. According to Michele, the work-around is to disable triggering and read all data out. Not checked */
 //#define IPECAMERA_BUG_INCOMPLETE_PACKETS	//**< Support incomplete packets, i.e. check for frame magic even if full frame size is not reached yet (slow) */
 //#define IPECAMERA_ANNOUNCE_READY		//**< Announce new event only after the reconstruction is done */
 //#define IPECAMERA_CLEAN_ON_START		//**< Read all the data from DMA before starting of recording */

@@ -6,6 +6,8 @@ set(IPECAMERA_ABI_VERSION "0")
 cmake_minimum_required(VERSION 2.6)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+add_definitions("-fPIC --std=gnu99 -Wall -O2 -gdwarf-2 -g3  -fno-omit-frame-pointer")
+
 find_package(PkgConfig REQUIRED)
 find_package(Threads REQUIRED)
 pkg_check_modules(UFODECODE ufodecode>=0.3 REQUIRED)

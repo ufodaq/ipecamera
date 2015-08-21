@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <strings.h>
 
 #include <pcilib.h>
 #include <pcilib/model.h>

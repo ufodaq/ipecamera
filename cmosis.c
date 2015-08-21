@@ -46,7 +46,6 @@ void ipecamera_cmosis_close(pcilib_t *ctx, pcilib_register_bank_context_t *reg_b
 }
 
 pcilib_register_bank_context_t* ipecamera_cmosis_open(pcilib_t *ctx, pcilib_register_bank_t bank, const char* model, const void *args) {
-	int err;
 	ipecamera_cmosis_context_t *bank_ctx;
 
 	bank_ctx = calloc(1, sizeof(ipecamera_cmosis_context_t));

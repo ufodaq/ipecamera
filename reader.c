@@ -38,8 +38,10 @@
 	} \
     }
 
-//#define CHECK_FRAME_MAGIC(buf) \
-//	memcmp(buf, ((void*)frame_magic) + 1, sizeof(frame_magic) - 1)
+/*
+#define CHECK_FRAME_MAGIC(buf) \
+	memcmp(buf, ((void*)frame_magic) + 1, sizeof(frame_magic) - 1)
+*/
 
 #define CHECK_FRAME_MAGIC(buf) \
 	memcmp(((ipecamera_payload_t*)(buf)) + 1, &frame_magic[1], sizeof(frame_magic) - sizeof(ipecamera_payload_t))
@@ -341,14 +343,13 @@ void *ipecamera_reader_thread(void *user) {
 		}
 #ifdef IPECAMERA_BUG_STUCKED_BUSY
 		GET_REG(status2_reg, value);
-		if (value&0x2FFFFFFF) {
+		if ((!err)&&(value&0x2FFFFFFF)) {
 		    pcilib_warning("Camera stuck in busy, trying to recover...");
 		    GET_REG(control_reg, saved);
 		    SET_REG(control_reg, IPECAMERA_IDLE);
 		    while ((value&0x2FFFFFFF)&&(ctx->run_reader)) {
 			usleep(IPECAMERA_NOFRAME_SLEEP);
 		    }
-		    return 0;
 		}
 #endif /* IPECAMERA_BUG_STUCKED_BUSY */
 		usleep(IPECAMERA_NOFRAME_SLEEP);

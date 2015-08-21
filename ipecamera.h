@@ -33,7 +33,15 @@ typedef struct {
     size_t raw_size;		/**< Indicates the actual size of raw data */
 } ipecamera_event_info_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ipecamera_set_buffer_size(ipecamera_t *ctx, int size);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #endif /* _IPECAMERA_H */

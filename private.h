@@ -5,6 +5,7 @@
 #include <pcilib/model.h>
 #include <pcilib/debug.h>
 #include <pcilib/locking.h>
+#include "base.h"
 #include "ipecamera.h"
 #include "env.h"
 

@@ -16,6 +16,8 @@
 #include <pcilib/tools.h>
 #include <pcilib/error.h>
 #include <pcilib/event.h>
+#include <pcilib/cpu.h>
+#include <pcilib/timing.h>
 
 #include "private.h"
 #include "model.h"
@@ -131,12 +133,12 @@ pcilib_context_t *ipecamera_init(pcilib_t *pcilib) {
 	switch (value) {
 	 case IPECAMERA_FIRMWARE_UFO5:
 	    ctx->firmware = value;
-	    err = pcilib_add_registers(pcilib, 0, cmosis_registers);
+	    err = pcilib_add_registers(pcilib, 0, 0, cmosis_registers, NULL);
 	    break;
 	 case IPECAMERA_FIRMWARE_CMOSIS20:
 	    ctx->firmware = value;
 	    ctx->buffer_size = IPECAMERA_DEFAULT_CMOSIS20_BUFFER_SIZE;
-	    err = pcilib_add_registers(pcilib, 0, cmosis20000_registers);
+	    err = pcilib_add_registers(pcilib, 0, 0, cmosis20000_registers, NULL);
 	    break;
 	 default:
 	    ctx->firmware = IPECAMERA_FIRMWARE_UNKNOWN;
@@ -199,7 +201,7 @@ pcilib_dma_context_t *ipecamera_init_dma(pcilib_context_t *vctx) {
     }
 
     if (ctx->firmware) {
-	return model_info->dma->api->init(vctx->pcilib, NULL, NULL);
+	return model_info->dma->api->init(vctx->pcilib, "ipecamera", NULL);
     } else {
 	return model_info->dma->api->init(vctx->pcilib, "pci", NULL);
     }
@@ -654,7 +656,6 @@ int ipecamera_stop(pcilib_context_t *vctx, pcilib_event_flags_t flags) {
 	free(ctx->buffer);
 	ctx->buffer = NULL;
     }
-    
 
     memset(&ctx->autostop, 0, sizeof(ipecamera_autostop_t));
 

@@ -14,6 +14,7 @@
 #include <pcilib.h>
 #include <pcilib/tools.h>
 #include <pcilib/error.h>
+#include <pcilib/timing.h>
 
 #include "ipecamera.h"
 #include "private.h"

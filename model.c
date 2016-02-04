@@ -15,7 +15,7 @@ enum ipecamera_protocol_s {
 
 
 static const pcilib_register_protocol_api_description_t ipecamera_cmosis_protocol_api =
-    { IPECAMERA_VERSION, ipecamera_cmosis_open, ipecamera_cmosis_close, ipecamera_cmosis_read, ipecamera_cmosis_write };
+    { IPECAMERA_VERSION, ipecamera_cmosis_open, ipecamera_cmosis_close, NULL, ipecamera_cmosis_read, ipecamera_cmosis_write };
 
 /*
 static const pcilib_dma_description_t ipecamera_dma =
@@ -86,7 +86,7 @@ const pcilib_register_description_t cmosis_registers[] = {
 };
 
 const pcilib_register_description_t cmosis20000_registers[] = {
-{15, 	0, 	2, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_nr_slopes", ""},
+{15, 	0, 	2, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_nr_slopes_ex", ""},
 {22, 	0, 	16, 	1, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_frames", ""},
 {24, 	0, 	16, 	0, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_start_single",  ""},
 {26, 	0, 	16, 	3840, 	0,                        PCILIB_REGISTER_RW, PCILIB_REGISTER_STANDARD, PCILIB_REGISTER_BANK0, "cmosis_number_lines_single",  ""},
@@ -231,6 +231,8 @@ static const pcilib_model_description_t ipecamera_models[] = {{
     ipecamera_banks,
     ipecamera_protocols,
     ipecamera_ranges,
+    NULL,
+    NULL,
     ipecamera_events,
     ipecamera_data_types,
     "ipecamera",

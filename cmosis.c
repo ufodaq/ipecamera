@@ -11,6 +11,7 @@
 #include <pcilib/error.h>
 #include <pcilib/locking.h>
 #include <pcilib/model.h>
+#include <pcilib/datacpy.h>
 
 #include "cmosis.h"
 #include "private.h"
@@ -75,8 +76,8 @@ int ipecamera_cmosis_read(pcilib_t *ctx, pcilib_register_bank_context_t *reg_ban
     
     assert(addr < 128);
     
-    wr =  pcilib_resolve_register_address(ctx, bank->bar, bank->write_addr);
-    rd =  pcilib_resolve_register_address(ctx, bank->bar, bank->read_addr);
+    wr =  pcilib_resolve_bar_address(ctx, bank->bar, bank->write_addr);
+    rd =  pcilib_resolve_bar_address(ctx, bank->bar, bank->read_addr);
     if ((!rd)||(!wr)) {
 	pcilib_error("Error resolving addresses of read & write registers");
 	return PCILIB_ERROR_INVALID_ADDRESS;
@@ -171,8 +172,8 @@ int ipecamera_cmosis_write(pcilib_t *ctx, pcilib_register_bank_context_t *reg_ba
     assert(addr < 128);
     assert(value < 256);
     
-    wr =  pcilib_resolve_register_address(ctx, bank->bar, bank->write_addr);
-    rd =  pcilib_resolve_register_address(ctx, bank->bar, bank->read_addr);
+    wr =  pcilib_resolve_bar_address(ctx, bank->bar, bank->write_addr);
+    rd =  pcilib_resolve_bar_address(ctx, bank->bar, bank->read_addr);
     if ((!rd)||(!wr)) {
 	pcilib_error("Error resolving addresses of read & write registers");
 	return PCILIB_ERROR_INVALID_ADDRESS;

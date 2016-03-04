@@ -6,3 +6,7 @@ install_manifest.txt
 grab
 ipecamera.pc
 version.h
+CPackConfig.cmake
+CPackSourceConfig.cmake
+_CPack_Packages
+ipecamera.spec

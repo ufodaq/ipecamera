@@ -1,0 +1,55 @@
+Summary: UFO Camera plugin for pcitool
+Name: ${PACKAGE_NAME}
+Version: ${CPACK_PACKAGE_VERSION}
+Release: csa
+License: GPL-3.0
+Group: Development/Libraries
+Source: ${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar.bz2
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
+URL: http://darksoft.org
+Prefix: %{_prefix}
+Docdir: %{_docdir}
+Requires: libpcilib ipecamera-scripts
+BuildRequires: libpcilib-devel
+BuildRequires: pkg-config libtool cmake
+Vendor: Institute for Data Processing and Electronics, KIT
+Packager: Suren A. Chilingaryan <csa@suren.me>
+
+%description
+This package provides an UFO Camera event engine for the pcilib platform.
+
+%package devel
+Summary: UFO Camera plugin for pcitool
+Group: Development/Libraries 
+Requires: ${PACKAGE_NAME} = %{version}
+Requires: libpcilib-devel
+
+%description devel
+Development files provide access to some non-standard features of the event engine.
+
+%prep
+%setup -q
+
+%build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DLIB_INSTALL_DIR=%{_libdir} -DBIN_INSTALL_DIR=%{_bindir} -DDATA_INSTALL_DIR=%{_datadir} -DINCLUDE_INSTALL_DIR=%{_includedir} .
+make
+
+%install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files 
+%defattr(-, root, root)
+${PCILIB_PLUGIN_DIR}/lib${PACKAGE_NAME}.so
+
+%files -n ${PACKAGE_NAME}-devel
+%defattr(-, root, root)  
+%{_includedir}/*
+%{_libdir}/pkgconfig/*.pc
+
+%changelog
+* Fri Mar  4 2016 Suren A. Chilingaryan <csa@suren.me> - ${CPACK_PACKAGE_VERSION}
+- Added spec file to the sources

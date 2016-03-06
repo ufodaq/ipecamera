@@ -10,3 +10,4 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 _CPack_Packages
 ipecamera.spec
+*.tar.bz2

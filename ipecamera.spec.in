@@ -9,8 +9,9 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://darksoft.org
 Prefix: %{_prefix}
 Docdir: %{_docdir}
-Requires: libpcilib ipecamera-scripts
-BuildRequires: libpcilib-devel
+Requires: pcilib >= 0.2.7 libufodecode >= 0.3.0 ipecamera-scripts
+BuildRequires: uthash
+BuildRequires: libpcilib-devel libufodecode-devel
 BuildRequires: pkg-config libtool cmake
 Vendor: Institute for Data Processing and Electronics, KIT
 Packager: Suren A. Chilingaryan <csa@suren.me>

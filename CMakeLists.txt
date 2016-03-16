@@ -19,6 +19,7 @@ exec_program("pkg-config --variable=plugindir pcitool" OUTPUT_VARIABLE PCILIB_PL
 include(cmake/version.cmake)
 VERSION_TO_VARS(${IPECAMERA_VERSION} IPECAMERA_VERSION_MAJOR IPECAMERA_VERSION_MINOR IPECAMERA_VERSION_MICRO)
 
+include(GNUInstallDirs)
 
 add_subdirectory(apps)
 
@@ -40,7 +41,7 @@ add_library(ipecamera SHARED model.c cmosis.c base.c reader.c events.c data.c en
 target_link_libraries(ipecamera ${PCILIB_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${UFODECODE_LIBRARIES} )
 
 install(FILES ipecamera.h
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(TARGETS ipecamera
@@ -69,23 +70,11 @@ add_custom_target(dist_clean COMMAND ${CMAKE_MAKE_PROGRAM} clean WORKING_DIRECTO
 add_custom_target(dist DEPENDS dist_clean COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
 
 
-if(NOT DEFINED BIN_INSTALL_DIR)
-    set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
-endif(NOT DEFINED BIN_INSTALL_DIR)
-
-if(NOT DEFINED LIB_INSTALL_DIR)
-    set(LIB_INSTALL_DIR "${LIB_INSTALL_DIR}")
-endif(NOT DEFINED LIB_INSTALL_DIR)
-
-if(NOT DEFINED INCLUDE_INSTALL_DIR)
-    set(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
-endif(NOT DEFINED INCLUDE_INSTALL_DIR)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipecamera.pc.in ${CMAKE_CURRENT_BINARY_DIR}/ipecamera.pc)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipecamera.spec.in ${CMAKE_CURRENT_BINARY_DIR}/ipecamera.spec)
 
 install(FILES 
     ${CMAKE_CURRENT_BINARY_DIR}/ipecamera.pc 
-    DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )

@@ -1,10 +1,10 @@
 prefix=${CMAKE_INSTALL_PREFIX}
-exec_prefix=${BIN_INSTALL_DIR}
+exec_prefix=${CMAKE_INSTALL_FULL_BINDIR}
 libdir=${PCILIB_PLUGIN_DIR}
-includedir=${INCLUDE_INSTALL_DIR}
+includedir=${CMAKE_INSTALL_FULL_INCLUDEDIR}
 
 Name: ${TARNAME}
 Description: IPECamera event engine for pcilib
 Version: ${PACKAGE_VERSION}
 Libs: -L${PCILIB_PLUGIN_DIR} -lipecamera
-Cflags: -I${INCLUDE_INSTALL_DIR}
+Cflags: -I${CMAKE_INSTALL_FULL_INCLUDEDIR}

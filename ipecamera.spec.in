@@ -32,7 +32,8 @@ Development files provide access to some non-standard features of the event engi
 %setup -q
 
 %build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DLIB_INSTALL_DIR=%{_libdir} -DBIN_INSTALL_DIR=%{_bindir} -DDATA_INSTALL_DIR=%{_datadir} -DINCLUDE_INSTALL_DIR=%{_includedir} .
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=%{_libdir} -DCMAKE_INSTALL_BINDIR=%{_bindir} -DCMAKE_INSTALL_DATADIR=%{_datadir} -DCMAKE_INSTALL_DATAROOTDIR=%{_datadir} -DCMAKE_INSTALL_INCLUDEDIR=%{_includedir} .
+
 make
 
 %install

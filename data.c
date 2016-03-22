@@ -79,7 +79,7 @@ ready:
 }
 
 static int ipecamera_get_next_buffer_to_process(ipecamera_t *ctx, pcilib_event_id_t *evid) {
-    int res;
+    int err, res;
 
     if (ctx->preproc_id == ctx->event_id) return -1;
     
@@ -101,9 +101,10 @@ static int ipecamera_get_next_buffer_to_process(ipecamera_t *ctx, pcilib_event_i
 
     res = ctx->preproc_id%ctx->buffer_size;
 
-    if (pthread_rwlock_trywrlock(&ctx->frame[res].mutex)) {
-	pthread_mutex_unlock(&ctx->preproc_mutex);
-	ipecamera_debug(HARDWARE, "Can't lock buffer %i", res);
+    if ((err = pthread_rwlock_trywrlock(&ctx->frame[res].mutex)) != 0) {
+	if (ctx->preproc)
+	    pthread_mutex_unlock(&ctx->preproc_mutex);
+	ipecamera_debug(HARDWARE, "Can't lock buffer %i, errno %i", res, err);
 	return -1;
     }
     

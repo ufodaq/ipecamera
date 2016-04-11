@@ -25,6 +25,7 @@ add_subdirectory(apps)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
+    ${CMAKE_BINARY_DIR}
     ${UFODECODE_INCLUDE_DIRS}
     ${PCILIB_INCLUDE_DIRS}
 )

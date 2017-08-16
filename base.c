@@ -290,14 +290,6 @@ int ipecamera_reset(pcilib_context_t *vctx) {
 	pcilib_warning("Reset procedure is not implemented");
     }
 
-	// Set default parameters
-    err = pcilib_write_register_by_id(pcilib, control, IPECAMERA_IDLE);
-    if (err) {
-	UNLOCK(run);
-	pcilib_error("Error bringing FPGA in default mode");
-	return err;
-    }
-
     usleep(10000);
 
 
@@ -362,11 +354,14 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
      case IPECAMERA_FIRMWARE_UFO5:
 	ctx->dim.width = CMOSIS_WIDTH;
 	ctx->dim.height = CMOSIS_MAX_LINES;
+
+	ctx->data_line_size = (1 + CMOSIS_PIXELS_PER_CHANNEL) * 32; 
 	break;
      case IPECAMERA_FIRMWARE_CMOSIS20:
 	ctx->dim.width = CMOSIS20_WIDTH;
 	ctx->dim.height = CMOSIS20_MAX_LINES;
-	ctx->cmosis_outputs = CMOSIS20_MAX_CHANNELS;
+
+	ctx->data_line_size = (2 + CMOSIS20_PIXELS_PER_CHANNEL) * 32;
 	break;
      default:
 	UNLOCK(run);
@@ -374,7 +369,7 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	return PCILIB_ERROR_INVALID_REQUEST;
     }
 
-    if (ctx->firmware == IPECAMERA_FIRMWARE_UFO5) {
+    if ((1)||(ctx->firmware == IPECAMERA_FIRMWARE_UFO5)) {
 	GET_REG(output_mode_reg, value);
 	switch (value) {
 	 case IPECAMERA_MODE_16_CHAN_IO:
@@ -388,7 +383,7 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	    pcilib_error("IPECamera reporting invalid output_mode 0x%lx", value);
 	    return PCILIB_ERROR_INVALID_STATE;
 	}
-    }
+    } 
 
 	// We should be careful here (currently firmware matches format, but this may not be the case in future)
     ipecamera_compute_buffer_size(ctx, ctx->firmware, CMOSIS_FRAME_HEADER_SIZE, ctx->dim.height);

@@ -28,7 +28,7 @@
 #define ipecamera_datacpy(dst, src, bank)   pcilib_datacpy(dst, src, 4, 1, bank->raw_endianess)
 
 //#define IPECAMERA_SIMPLIFIED_READOUT
-//#define IPECAMERA_RETRY_ERRORS
+#define IPECAMERA_RETRY_ERRORS
 #define IPECAMERA_MULTIREAD
 
 

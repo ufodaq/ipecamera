@@ -63,13 +63,18 @@
 #define CMOSIS_WIDTH (CMOSIS_MAX_CHANNELS * CMOSIS_PIXELS_PER_CHANNEL)
 //#define IPECAMERA_MAX_LINES 1088
 #define CMOSIS_MAX_LINES 2048
+
+/*
 #define CMOSIS20_MAX_CHANNELS 8
 #define CMOSIS20_PIXELS_PER_CHANNEL 640
 #define CMOSIS20_WIDTH (CMOSIS20_MAX_CHANNELS * CMOSIS20_PIXELS_PER_CHANNEL)
+*/
+#define CMOSIS20_PIXELS_PER_CHANNEL 320
+#define CMOSIS20_WIDTH (CMOSIS_MAX_CHANNELS * CMOSIS_PIXELS_PER_CHANNEL)
 #define CMOSIS20_MAX_LINES 3840
 
-#define IPECAMERA_FRAME_REQUEST 		0x80000209 // 0x1E9
-#define IPECAMERA_IDLE 				0x80000201 // 0x1E1
+#define IPECAMERA_FRAME_REQUEST 		0x209 // 0x80000209 // 0x1E9
+#define IPECAMERA_IDLE 				0x201 // 0x80000201 // 0x1E1
 #define IPECAMERA_START_INTERNAL_STIMULI 	0x1F1
 
 #define IPECAMERA_MODE_16_CHAN_IO		0
@@ -243,6 +248,7 @@ struct ipecamera_s {
     char saved_header[CMOSIS_FRAME_HEADER_SIZE];	/**< If it happened that the frame header is split between 2 DMA packets, this variable holds the part containing in the first packet */
 #endif /* IPECAMERA_BUG_MULTIFRAME_HEADERS */
 
+    size_t data_line_size;
     ipecamera_image_dimensions_t dim;
 
     pthread_t rthread;

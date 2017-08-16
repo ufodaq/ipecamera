@@ -61,12 +61,9 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, ipecamera_format_t format, s
 
     switch (format) {
      case IPECAMERA_FORMAT_CMOSIS:
-	max_channels = CMOSIS_MAX_CHANNELS;
-	line_size = (1 + CMOSIS_PIXELS_PER_CHANNEL) * 32; 
-	break;
      case IPECAMERA_FORMAT_CMOSIS20:
-	max_channels = CMOSIS20_MAX_CHANNELS;
-	line_size = (1 + CMOSIS20_PIXELS_PER_CHANNEL) * 32 / 2;
+	max_channels = CMOSIS_MAX_CHANNELS;
+	line_size = ctx->data_line_size;
 	break;
      default:
 	pcilib_warning("Unsupported version (%u) of frame format...", format);
@@ -92,6 +89,7 @@ int ipecamera_compute_buffer_size(ipecamera_t *ctx, ipecamera_format_t format, s
 
 
 static int ipecamera_parse_header(ipecamera_t *ctx, ipecamera_payload_t *buf, size_t buf_size) {
+    int err;
     int last = buf[0] & 1;
     int version = (buf[0] >> 1) & 7;
     size_t size = 0, n_lines;
@@ -129,7 +127,9 @@ static int ipecamera_parse_header(ipecamera_t *ctx, ipecamera_payload_t *buf, si
     }
 
     size += CMOSIS_FRAME_HEADER_SIZE;
-    ipecamera_compute_buffer_size(ctx, format, size, n_lines);
+
+    err = ipecamera_compute_buffer_size(ctx, format, size, n_lines);
+    if (err) return 0;
 
 	// Returns total size of found headers or 0 on the error
     return size;
@@ -348,7 +348,7 @@ void *ipecamera_reader_thread(void *user) {
 		if ((!err)&&(value&0x2FFFFFFF)) {
 		    pcilib_warning("Camera stuck in busy, trying to recover...");
 		    GET_REG(control_reg, saved);
-		    SET_REG(control_reg, IPECAMERA_IDLE);
+		    SET_REG(control_reg, IPECAMERA_IDLE|(saved&0xFFFF0000));
 		    while ((value&0x2FFFFFFF)&&(ctx->run_reader)) {
 			usleep(IPECAMERA_NOFRAME_SLEEP);
 		    }

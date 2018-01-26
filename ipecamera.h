@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 int ipecamera_set_buffer_size(ipecamera_t *ctx, int size);
+pcilib_event_id_t ipecamera_get_last_event_id(ipecamera_t *ctx);
 
 #ifdef __cplusplus
 }

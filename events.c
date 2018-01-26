@@ -201,3 +201,6 @@ retry:
     return 0;
 }
 
+pcilib_event_id_t ipecamera_get_last_event_id(ipecamera_t *ctx) {
+    return ctx->event_id;
+}

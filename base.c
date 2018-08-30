@@ -361,7 +361,8 @@ int ipecamera_start(pcilib_context_t *vctx, pcilib_event_t event_mask, pcilib_ev
 	ctx->dim.width = CMOSIS20_WIDTH;
 	ctx->dim.height = CMOSIS20_MAX_LINES;
 
-	ctx->data_line_size = (2 + CMOSIS20_PIXELS_PER_CHANNEL) * 32;
+	    // There is skipped C0 line once per every two lines (which are in fact encoded together)
+	ctx->data_line_size = CMOSIS20_PIXELS_PER_CHANNEL * 32 + 16;
 	break;
      default:
 	UNLOCK(run);

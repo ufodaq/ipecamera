@@ -1,0 +1,23 @@
+Camera: 3840x5120
+======
+ - 5120 = 16 channels of 320 pixels each.
+    * In fact two lines returned simultaneously (in each payload). So, there is 8 channels per line and 640 payloads are transferred to complete 2 lines.
+    * Actually, 641. There is always 1 extra payload which is just skipped in libufodecode (starting with C0)
+    * Actually, 1 (last) payload is missing for the first two rows. So, total number of payloads is (3840/2) * (640 + 1) - 32
+    
+
+Triggering
+==========
+ There is 2 bits of control register responsible for external triggering
+    bit 16 (from 1): enables external triggering (should be 1)
+    bit 15 (from 1): sets edge type of triggering (should be 1)
+
+ - Start external triggering
+    pci -w control 0x8000C201
+ - Stop external triggering
+    pci -w control 0x80008201
+
+
+Repeating line bug
+==================
+ - Happening with manual triggering, but do not happen in external trigger mode

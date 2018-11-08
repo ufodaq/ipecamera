@@ -4,6 +4,10 @@ Camera: 3840x5120
     * In fact two lines returned simultaneously (in each payload). So, there is 8 channels per line and 640 payloads are transferred to complete 2 lines.
     * Actually, 641. There is always 1 extra payload which is just skipped in libufodecode (starting with C0)
     * Actually, 1 (last) payload is missing for the first two rows. So, total number of payloads is (3840/2) * (640 + 1) - 32
+
+ - Limitations
+    * Due to encoding, ROI should always start at even line and include even number of lines
+
     
 
 Triggering

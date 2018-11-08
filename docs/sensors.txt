@@ -1,0 +1,10 @@
+The UFO 20 MPixel has internal version of 0x6 --> register 9030
+The UFO 2/4 Mpixel --> has internal version of 0x5 --> register 9030 
+
+At level of electronics both 2 and 4 Mpixel camera are similar at level of CNOSIS and you cannot differentiate. 
+There is only one bit set to "1" for the 4 Mpixel for PETRA this set the speed grade of the clock on the control_reg[31] 
+
+When it is set to 1 --> 4 Mpixel camera @ 12 bits resolution. 
+The 2Mpixel --> was to 0 
+
+Please have a look in the default configuration of the camera in control_reg[31] = 1  --> this means 4 Mpixel 
